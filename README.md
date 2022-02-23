@@ -43,4 +43,4 @@ More concretely, see [sample/label.txt](https://github.com/daisatojp/labelTrack/
 
 ## Acknowledgment
 
-* [labelimg](https://github.com/tzutalin/labelImg) as a reference
+* [labelimg](https://github.com/tzutalin/labelImg) as a reference.
