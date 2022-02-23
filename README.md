@@ -15,3 +15,20 @@ python labelTrack.py
 * Click `Open Image Dir` in toolbar to open a folder containing a sequence of images.
 * Click `Create Object` in toolbar and make box by a mouse dragging in each image.
 * Click `Save` in toolbar to save label file.
+
+## Useful Shortcuts
+
+| Key | Action |
+| --- | --------------- |
+| `d` | open next image |
+| `a` | open previous image |
+| `w` | create bounding box |
+| `c` | remove bounding box |
+| `r` | copy bounding box from previous image |
+| `t` | open next image and copy bounding box from previous image |
+| `v` | open next image and remove bounding box |
+
+## Acknowledgment
+
+* [labelimg](https://github.com/tzutalin/labelImg) as a reference
+* 
