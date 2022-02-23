@@ -27,6 +27,8 @@ python labelTrack.py
 ...
 ```
 
+More concretely, see [sample/label.txt](https://github.com/daisatojp/labelTrack/blob/main/sample/label.txt).
+
 ## Useful Shortcuts
 
 | Key | Action |
