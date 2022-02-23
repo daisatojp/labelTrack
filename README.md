@@ -16,6 +16,17 @@ python labelTrack.py
 * Click `Create Object` in toolbar and make box by a mouse dragging in each image.
 * Click `Save` in toolbar to save label file.
 
+## Label Format
+
+```text
+<x coord of top-left>,<y coord of top-left>,<width>,<height>
+<x coord of top-left>,<y coord of top-left>,<width>,<height>
+<x coord of top-left>,<y coord of top-left>,<width>,<height>
+...
+...
+...
+```
+
 ## Useful Shortcuts
 
 | Key | Action |
