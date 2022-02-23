@@ -31,4 +31,3 @@ python labelTrack.py
 ## Acknowledgment
 
 * [labelimg](https://github.com/tzutalin/labelImg) as a reference
-* 
