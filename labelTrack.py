@@ -257,10 +257,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self.load_image()
 
     def new_shape(self):
-        self.add_label()
-        self.update_bbox_list()
+        self.add_object_to_label_list()
+        self.update_bbox_list_by_canvas()
         self.canvas.set_editing(True)
-        self.actions.create.setEnabled(True)
+        self.action_create_object.setEnabled(True)
         self.set_dirty()
 
     def toggle_polygons(self, value):
@@ -349,7 +349,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.dirty is False:
             return
         with open(self.label_path, 'w') as f:
-            for box in self.box_list:
+            for box in self.bbox_list:
                 f.write(box)
         self.set_clean()
         self.statusBar().showMessage(f'Saved to {self.label_path}')
@@ -449,18 +449,16 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.image.isNull():
             self.action_fit_window.setChecked(False)
             return
-        if value:
-            self.action_fit_width.setChecked(False)
-        self.zoom_mode = self.FIT_WINDOW if value else self.MANUAL_ZOOM
+        self.action_fit_width.setChecked(False)
+        self.zoom_mode = self.FIT_WINDOW
         self.adjust_scale()
 
     def set_fit_width(self, value=True):
         if self.image.isNull():
             self.action_fit_width.setChecked(False)
             return
-        if value:
-            self.action_fit_window.setChecked(False)
-        self.zoom_mode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
+        self.action_fit_window.setChecked(False)
+        self.zoom_mode = self.FIT_WIDTH
         self.adjust_scale()
 
     def paint_canvas(self):
@@ -568,7 +566,7 @@ class MainWindow(QMainWindow, WindowMixin):
             shape.line_color = QColor(227, 79, 208, 100)
             shape.fill_color = QColor(227, 79, 208, 100)
             self.canvas.load_shape(shape)
-            self.add_label()
+            self.add_object_to_label_list()
         else:
             self.canvas.load_shape(None)
             self.remove_object_from_label_list()
