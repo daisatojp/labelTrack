@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from libs.utils import distance
+from labelTrack.utils import distance
 
 
 DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)

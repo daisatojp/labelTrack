@@ -6,13 +6,13 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QMessageBox as QMB
-from libs.constants import *
-from libs.utils import *
-from libs.settings import Settings
-from libs.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
-from libs.canvas import Canvas
-from libs.zoomwidget import ZoomWidget
-from libs.toolbar import ToolBar
+from labelTrack.constants import *
+from labelTrack.utils import *
+from labelTrack.settings import Settings
+from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
+from labelTrack.canvas import Canvas
+from labelTrack.zoomwidget import ZoomWidget
+from labelTrack.toolbar import ToolBar
 
 
 __appname__ = 'labelTrack'
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.image_dir = image_dir
         self.label_path = label_path
-        self.bbox_list = None
+        self.bbox_list = []
         self.dirty = False
 
         self.label_list = QListWidget()
@@ -95,8 +95,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
         self.file_dock.setFeatures(QDockWidget.DockWidgetFloatable)
 
-        self.dock_features = QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable
-        self.dock.setFeatures(self.dock.features() ^ self.dock_features)
+        self.dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable)
 
         self.action_quit = new_action(
             self, 'Quit', self.close,

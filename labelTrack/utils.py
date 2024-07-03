@@ -7,7 +7,7 @@ import re
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.resource import read_icon
+from labelTrack.resource import read_icon
 
 
 def new_icon(icon):

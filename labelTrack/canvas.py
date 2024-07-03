@@ -1,8 +1,8 @@
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.shape import Shape
-from libs.utils import distance
+from labelTrack.shape import Shape
+from labelTrack.utils import distance
 
 
 CURSOR_DEFAULT = Qt.ArrowCursor
@@ -132,7 +132,7 @@ class Canvas(QWidget):
             return
 
         # Polygon/Vertex moving.
-        if Qt.LeftButton & ev.buttons():
+        if ev.buttons() == Qt.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
                 self.shapeMoved.emit()
