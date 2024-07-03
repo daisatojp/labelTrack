@@ -1,3 +1,6 @@
+import labelTrack.settings as Settings
+Settings.initialize()
+
 import os
 import os.path as osp
 import argparse
@@ -6,14 +9,15 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtWidgets import QMessageBox as QMB
-from labelTrack.constants import *
+from labelTrack.defines import *
 from labelTrack.utils import *
-from labelTrack.settings import Settings
 from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from labelTrack.canvas import Canvas
 from labelTrack.zoomwidget import ZoomWidget
 from labelTrack.toolbar import ToolBar
 
+
+settings = Settings.settings
 
 __appname__ = 'labelTrack'
 
@@ -42,9 +46,6 @@ class MainWindow(QMainWindow, WindowMixin):
     def __init__(self, image_dir, label_path):
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
-
-        self.settings = Settings()
-        self.settings.load()
 
         self.image_dir = image_dir
         self.label_path = label_path
@@ -174,7 +175,7 @@ class MainWindow(QMainWindow, WindowMixin):
             help=self.menu('Help'))
         self.auto_saving = QAction('autoSaveMode', self)
         self.auto_saving.setCheckable(True)
-        self.auto_saving.setChecked(self.settings.get(SETTING_AUTO_SAVE, True))
+        self.auto_saving.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
         add_actions(
             self.menus.file,
             (self.action_open_image_dir,
@@ -226,12 +227,14 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoom_level = 100
         self.fit_window = False
 
-        size = self.settings.get(SETTING_WINDOW_SIZE, QSize(600, 500))
-        position = QPoint(0, 0)
-        saved_position = self.settings.get(SETTING_WINDOW_POSE, position)
+        window_x = settings.get(SETTINGS_KEY_WINDOW_X, 0)
+        window_y = settings.get(SETTINGS_KEY_WINDOW_Y, 0)
+        window_w = settings.get(SETTINGS_KEY_WINDOW_W, 600)
+        window_h = settings.get(SETTINGS_KEY_WINDOW_H, 500)
+        position = QPoint(window_x, window_y)
+        size = QSize(window_w, window_h)
         self.resize(size)
-        self.move(saved_position)
-        self.restoreState(self.settings.get(SETTING_WINDOW_STATE, QByteArray()))
+        self.move(position)
 
         self.load_label()
         self.load_image_dir()
@@ -281,13 +284,14 @@ class MainWindow(QMainWindow, WindowMixin):
     def closeEvent(self, event):
         if not self.may_continue():
             event.ignore()
-        self.settings[SETTING_IMAGE_DIR] = self.image_dir if self.image_dir is not None else '.'
-        self.settings[SETTING_LABEL_PATH] = self.label_path if self.label_path is not None else '.'
-        self.settings[SETTING_WINDOW_SIZE] = self.size()
-        self.settings[SETTING_WINDOW_POSE] = self.pos()
-        self.settings[SETTING_WINDOW_STATE] = self.saveState()
-        self.settings[SETTING_AUTO_SAVE] = self.auto_saving.isChecked()
-        self.settings.save()
+        settings.set(SETTINGS_KEY_IMAGE_DIR, self.image_dir if self.image_dir is not None else '.')
+        settings.set(SETTINGS_KEY_LABEL_PATH, self.label_path if self.label_path is not None else '.')
+        settings.set(SETTINGS_KEY_WINDOW_X, self.pos().x())
+        settings.set(SETTINGS_KEY_WINDOW_Y, self.pos().y())
+        settings.set(SETTINGS_KEY_WINDOW_W, self.size().width())
+        settings.set(SETTINGS_KEY_WINDOW_H, self.size().height())
+        settings.set(SETTINGS_KEY_AUTO_SAVE, self.auto_saving.isChecked())
+        settings.save()
 
     def open_image_dir_dialog(self, _value=False):
         if not self.may_continue():
@@ -379,7 +383,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.delete_object()
 
     def show_info_dialog(self):
-        from libs.__init__ import __version__
+        from labelTrack.__init__ import __version__
         msg = f'Name:{__appname__} \nApp Version:{__version__} \n{sys.version_info}'
         QMB.information(self, 'Information', msg)
 

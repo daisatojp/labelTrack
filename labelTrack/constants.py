@@ -1,6 +1,0 @@
-SETTING_IMAGE_DIR = 'image_dir'
-SETTING_LABEL_PATH = 'label_path'
-SETTING_WINDOW_SIZE = 'window_size'
-SETTING_WINDOW_POSE = 'window_position'
-SETTING_WINDOW_STATE = 'window_state'
-SETTING_AUTO_SAVE = 'auto_save'
