@@ -9,6 +9,7 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
 from PyQt6.QtWidgets import QMessageBox as QMB
+from labelTrack.__init__ import __appname__, __version__
 from labelTrack.defines import *
 from labelTrack.utils import *
 from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
@@ -18,8 +19,6 @@ from labelTrack.toolbar import ToolBar
 
 
 settings = Settings.settings
-
-__appname__ = 'labelTrack'
 
 
 class WindowMixin(object):
@@ -383,7 +382,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.delete_object()
 
     def show_info_dialog(self):
-        from labelTrack.__init__ import __version__
         msg = f'Name:{__appname__} \nApp Version:{__version__} \n{sys.version_info}'
         QMB.information(self, 'Information', msg)
 
