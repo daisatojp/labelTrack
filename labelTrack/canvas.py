@@ -1,15 +1,15 @@
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt6.QtGui import *
+from PyQt6.QtCore import *
+from PyQt6.QtWidgets import *
 from labelTrack.shape import Shape
 from labelTrack.utils import distance
 
 
-CURSOR_DEFAULT = Qt.ArrowCursor
-CURSOR_POINT = Qt.PointingHandCursor
-CURSOR_DRAW = Qt.CrossCursor
-CURSOR_MOVE = Qt.ClosedHandCursor
-CURSOR_GRAB = Qt.OpenHandCursor
+CURSOR_DEFAULT = Qt.CursorShape.ArrowCursor
+CURSOR_POINT = Qt.CursorShape.PointingHandCursor
+CURSOR_DRAW = Qt.CursorShape.CrossCursor
+CURSOR_MOVE = Qt.CursorShape.ClosedHandCursor
+CURSOR_GRAB = Qt.CursorShape.OpenHandCursor
 
 
 class Canvas(QWidget):
@@ -48,7 +48,7 @@ class Canvas(QWidget):
         self._painter = QPainter()
         self._cursor = CURSOR_DEFAULT
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.WheelFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
 
         # initialisation for panning
         self.pan_initial_pos = QPoint()
@@ -132,7 +132,7 @@ class Canvas(QWidget):
             return
 
         # Polygon/Vertex moving.
-        if ev.buttons() == Qt.LeftButton:
+        if ev.buttons() == Qt.MouseButton.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
                 self.shapeMoved.emit()
@@ -209,7 +209,7 @@ class Canvas(QWidget):
 
     def mousePressEvent(self, ev):
         pos = self.transform_pos(ev.pos())
-        if ev.button() == Qt.LeftButton:
+        if ev.button() == Qt.MouseButton.LeftButton:
             if self.drawing():
                 self.handle_drawing(pos)
             else:
@@ -221,7 +221,7 @@ class Canvas(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, ev):
-        if ev.button() == Qt.LeftButton and self.selected_shape:
+        if ev.button() == Qt.MouseButton.LeftButton and self.selected_shape:
             if self.selected_vertex():
                 self.override_cursor(CURSOR_POINT)
             else:
@@ -414,9 +414,8 @@ class Canvas(QWidget):
 
         p = self._painter
         p.begin(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.HighQualityAntialiasing)
-        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         p.scale(self.scale, self.scale)
         p.translate(self.offset_to_center())
@@ -439,7 +438,7 @@ class Canvas(QWidget):
             rect_width = right_bottom.x() - left_top.x()
             rect_height = right_bottom.y() - left_top.y()
             p.setPen(self.drawing_rect_color)
-            brush = QBrush(Qt.BDiagPattern)
+            brush = QBrush(Qt.BrushStyle.BDiagPattern)
             p.setBrush(brush)
             p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
 
@@ -456,7 +455,8 @@ class Canvas(QWidget):
 
     def transform_pos(self, point):
         """Convert from widget-logical coordinates to painter-logical coordinates."""
-        return point / self.scale - self.offset_to_center()
+        pointf = QPointF(point.x(), point.y())
+        return pointf / self.scale - self.offset_to_center()
 
     def offset_to_center(self):
         s = self.scale

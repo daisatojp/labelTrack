@@ -1,7 +1,7 @@
 import sys
 import os.path as osp
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtCore import *
 
 
 def read_icon(name):

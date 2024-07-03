@@ -4,9 +4,9 @@ import os.path as osp
 from math import sqrt
 import hashlib
 import re
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt6.QtGui import *
+from PyQt6.QtCore import *
+from PyQt6.QtWidgets import *
 from labelTrack.resource import read_icon
 
 

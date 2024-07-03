@@ -7,7 +7,7 @@ In visual tracking dataset, a sequence of images has one object for each image, 
 ```bash
 git clone https://github.com/daisatojp/labelTrack.git
 cd labelTrack
-pip install pyqt5==5.14.1
+pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.3
 python labelTrack.py
 ```
 

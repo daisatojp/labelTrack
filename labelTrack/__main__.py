@@ -2,10 +2,10 @@ import os
 import os.path as osp
 import argparse
 from functools import partial
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtWidgets import QMessageBox as QMB
+from PyQt6.QtCore import *
+from PyQt6.QtGui import *
+from PyQt6.QtWidgets import *
+from PyQt6.QtWidgets import QMessageBox as QMB
 from labelTrack.constants import *
 from labelTrack.utils import *
 from labelTrack.settings import Settings
@@ -29,10 +29,10 @@ class WindowMixin(object):
     def toolbar(self, title, actions=None):
         toolbar = ToolBar(title)
         toolbar.setObjectName(f'{title}ToolBar')
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         if actions:
             add_actions(toolbar, actions)
-        self.addToolBar(Qt.LeftToolBarArea, toolbar)
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, toolbar)
         return toolbar
 
 
@@ -81,8 +81,8 @@ class MainWindow(QMainWindow, WindowMixin):
         scroll.setWidget(self.canvas)
         scroll.setWidgetResizable(True)
         self.scroll_bars = {
-            Qt.Vertical: scroll.verticalScrollBar(),
-            Qt.Horizontal: scroll.horizontalScrollBar()}
+            Qt.Orientation.Vertical: scroll.verticalScrollBar(),
+            Qt.Orientation.Horizontal: scroll.horizontalScrollBar()}
         self.scroll_area = scroll
         self.canvas.scrollRequest.connect(self.scroll_request)
 
@@ -91,11 +91,11 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.drawingPolygon.connect(self.toggle_drawing_sensitive)
 
         self.setCentralWidget(scroll)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.file_dock)
-        self.file_dock.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
+        self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
-        self.dock.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable)
+        self.dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable | QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         self.action_quit = new_action(
             self, 'Quit', self.close,
@@ -229,13 +229,8 @@ class MainWindow(QMainWindow, WindowMixin):
         size = self.settings.get(SETTING_WINDOW_SIZE, QSize(600, 500))
         position = QPoint(0, 0)
         saved_position = self.settings.get(SETTING_WINDOW_POSE, position)
-        # Fix the multiple monitors issue
-        for i in range(QApplication.desktop().screenCount()):
-            if QApplication.desktop().availableGeometry(i).contains(saved_position):
-                position = saved_position
-                break
         self.resize(size)
-        self.move(position)
+        self.move(saved_position)
         self.restoreState(self.settings.get(SETTING_WINDOW_STATE, QByteArray()))
 
         self.load_label()
@@ -264,7 +259,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def toggle_polygons(self, value):
         for item, shape in self.items_to_shapes.items():
-            item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+            item.setCheckState(Qt.CheckState.Checked if value else Qt.CheckState.Unchecked)
 
     def load_image_dir(self):
         if not self.may_continue() or self.image_dir is None:
@@ -302,7 +297,7 @@ class MainWindow(QMainWindow, WindowMixin):
             default_image_dir = self.image_dir
         target_image_dir = QFileDialog.getExistingDirectory(
             self, f'{__appname__} - Open Image Directory', default_image_dir,
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
         self.image_dir = target_image_dir
         self.load_image_dir()
 
@@ -313,7 +308,7 @@ class MainWindow(QMainWindow, WindowMixin):
         target_file_path = QFileDialog.getSaveFileName(
             self, f'{__appname__} - Save label to the file',
             osp.dirname(default_label_path), 'Text (*.txt)',
-            None, QFileDialog.DontConfirmOverwrite)
+            None, QFileDialog.Option.DontConfirmOverwrite)
         if target_file_path is not None and len(target_file_path) > 1:
             self.label_path = target_file_path[0]
             self.load_label()
@@ -538,7 +533,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.label_list.count():
             self.label_list.setCurrentItem(self.label_list.item(self.label_list.count() - 1))
             self.label_list.item(self.label_list.count() - 1).setSelected(True)
-        self.canvas.setFocus(True)
+        self.canvas.setFocus()
 
     def load_label(self):
         if self.label_path is None:
@@ -627,7 +622,7 @@ def main():
     args = parser.parse_args()
     win = MainWindow(args.image_dir, args.label_path)
     win.show()
-    return app.exec_()
+    return app.exec()
 
 
 if __name__ == '__main__':
