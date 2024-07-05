@@ -1,5 +1,4 @@
 from functools import partial
-import os
 import os.path as osp
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -12,7 +11,6 @@ from labelTrack.utils import *
 from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from labelTrack.canvas import Canvas
 from labelTrack.zoomwidget import ZoomWidget
-from labelTrack.toolbar import ToolBar
 
 
 class WindowMixin(object):
@@ -607,3 +605,34 @@ class MainWindow(QMainWindow, WindowMixin):
     def set_clean(self):
         self.dirty = False
         self.action_save.setEnabled(False)
+
+
+class ToolBar(QToolBar):
+
+    def __init__(self, title):
+        super(ToolBar, self).__init__(title)
+        layout = self.layout()
+        m = (0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.setContentsMargins(*m)
+        self.setContentsMargins(*m)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+
+    def addAction(self, action):
+        if isinstance(action, QWidgetAction):
+            return super(ToolBar, self).addAction(action)
+        btn = ToolButton()
+        btn.setDefaultAction(action)
+        btn.setToolButtonStyle(self.toolButtonStyle())
+        self.addWidget(btn)
+
+
+class ToolButton(QToolButton):
+    minSize = (60, 60)
+
+    def minimumSizeHint(self):
+        ms = super(ToolButton, self).minimumSizeHint()
+        w1, h1 = ms.width(), ms.height()
+        w2, h2 = self.minSize
+        ToolButton.minSize = max(w1, w2), max(h1, h2)
+        return QSize(*ToolButton.minSize)
