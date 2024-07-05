@@ -78,7 +78,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
         self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
-        self.dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetClosable | QDockWidget.DockWidgetFeature.DockWidgetFloatable)
+        self.dock.setFeatures(
+            QDockWidget.DockWidgetFeature.DockWidgetClosable |
+            QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         self.action_quit = new_action(
             self, 'Quit', self.close,
@@ -150,16 +152,15 @@ class MainWindow(QMainWindow, WindowMixin):
             self.FIT_WINDOW: self.scale_fit_window,
             self.FIT_WIDTH: self.scale_fit_width,
             self.MANUAL_ZOOM: lambda: 1}
-        self.menus = Struct(
-            file=self.menu('File'),
-            edit=self.menu('Edit'),
-            view=self.menu('View'),
-            help=self.menu('Help'))
+        self.menus_file = self.menu('File')
+        self.menus_edit = self.menu('Edit')
+        self.menus_view = self.menu('View')
+        self.menus_help = self.menu('Help')
         self.auto_saving = QAction('autoSaveMode', self)
         self.auto_saving.setCheckable(True)
         self.auto_saving.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
         add_actions(
-            self.menus.file,
+            self.menus_file,
             (self.action_open_image_dir,
              self.action_open_label_file,
              self.action_save,
@@ -167,14 +168,14 @@ class MainWindow(QMainWindow, WindowMixin):
              self.action_prev_image,
              self.action_quit))
         add_actions(
-            self.menus.edit,
+            self.menus_edit,
             (self.action_create_object,
              self.action_delete_object,
              self.action_copy_object,
              self.action_next_image_and_copy,
              self.action_next_image_and_delete,))
         add_actions(
-            self.menus.view,
+            self.menus_view,
             (self.auto_saving,
              None,
              self.action_zoom_in,
@@ -184,7 +185,7 @@ class MainWindow(QMainWindow, WindowMixin):
              self.action_fit_window,
              self.action_fit_width))
         add_actions(
-            self.menus.help,
+            self.menus_help,
             (self.action_show_info,))
         self.toolbar = ToolBar('Tools')
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
