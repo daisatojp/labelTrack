@@ -1,18 +1,11 @@
+from math import sqrt
 import os
 import os.path as osp
-from math import sqrt
 import re
+import sys
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
-from labelTrack.resource import read_icon
-
-
-def new_icon(icon):
-    if icon is not None:
-        return read_icon(icon)
-    else:
-        return None
 
 
 def new_action(
@@ -25,7 +18,7 @@ def new_action(
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
-        a.setIcon(new_icon(icon))
+        a.setIcon(read_icon(icon))
     if shortcut is not None:
         if isinstance(shortcut, (list, tuple)):
             a.setShortcuts(shortcut)
@@ -75,3 +68,10 @@ def scan_all_images(folder_path):
         break
     natural_sort(images, key=lambda x: x.lower())
     return images
+
+
+def read_icon(name):
+    path = osp.join('icon', name)
+    if hasattr(sys, '_MEIPASS'):
+        path = osp.join(sys._MEIPASS, path)
+    return QIcon(QPixmap(path))
