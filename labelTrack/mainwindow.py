@@ -21,15 +21,6 @@ class WindowMixin(object):
             add_actions(menu, actions)
         return menu
 
-    def toolbar(self, title, actions=None):
-        toolbar = ToolBar(title)
-        toolbar.setObjectName(f'{title}ToolBar')
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        if actions:
-            add_actions(toolbar, actions)
-        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, toolbar)
-        return toolbar
-
 
 class MainWindow(QMainWindow, WindowMixin):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
@@ -195,9 +186,11 @@ class MainWindow(QMainWindow, WindowMixin):
         add_actions(
             self.menus.help,
             (self.action_show_info,))
-        self.tools = self.toolbar('Tools')
+        self.toolbar = ToolBar('Tools')
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolbar)
         add_actions(
-            self.tools,
+            self.toolbar,
             (self.action_open_image_dir,
              self.action_open_label_file,
              self.action_next_image,
