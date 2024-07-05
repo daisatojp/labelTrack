@@ -21,9 +21,7 @@ def new_action(
         slot=None,
         shortcut=None,
         icon=None,
-        tip=None,
-        checkable=False,
-        enabled=True):
+        checkable=False):
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
@@ -33,14 +31,10 @@ def new_action(
             a.setShortcuts(shortcut)
         else:
             a.setShortcut(shortcut)
-    if tip is not None:
-        a.setToolTip(tip)
-        a.setStatusTip(tip)
     if slot is not None:
         a.triggered.connect(slot)
     if checkable:
         a.setCheckable(True)
-    a.setEnabled(enabled)
     return a
 
 
