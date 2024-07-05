@@ -1,8 +1,6 @@
-import sys
 import os
 import os.path as osp
 from math import sqrt
-import hashlib
 import re
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
@@ -17,18 +15,15 @@ def new_icon(icon):
         return None
 
 
-def new_button(text, icon=None, slot=None):
-    b = QPushButton(text)
-    if icon is not None:
-        b.setIcon(new_icon(icon))
-    if slot is not None:
-        b.clicked.connect(slot)
-    return b
-
-
 def new_action(
-        parent, text, slot=None, shortcut=None, icon=None,
-        tip=None, checkable=False, enabled=True):
+        parent: QWidget,
+        text: str,
+        slot=None,
+        shortcut=None,
+        icon=None,
+        tip=None,
+        checkable=False,
+        enabled=True):
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
@@ -59,17 +54,8 @@ def add_actions(widget, actions):
             widget.addAction(action)
 
 
-def label_validator():
-    return QRegExpValidator(QRegExp(r'^[^ \t].+'), None)
-
-
 def distance(p):
     return sqrt(p.x() * p.x() + p.y() * p.y())
-
-
-def format_shortcut(text):
-    mod, key = text.split('+', 1)
-    return '<b>%s</b>+<b>%s</b>' % (mod, key)
 
 
 def natural_sort(list, key=lambda s:s):
@@ -81,10 +67,6 @@ def natural_sort(list, key=lambda s:s):
         return lambda s: [convert(c) for c in re.split('([0-9]+)', key(s))]
     sort_key = get_alphanum_key_func(key)
     list.sort(key=sort_key)
-
-
-def trimmed(text):
-    return text.strip()
 
 
 def scan_all_images(folder_path):
