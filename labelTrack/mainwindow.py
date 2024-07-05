@@ -10,7 +10,6 @@ from labelTrack.defines import *
 from labelTrack.utils import *
 from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from labelTrack.canvas import Canvas
-from labelTrack.zoomwidget import ZoomWidget
 
 
 class WindowMixin(object):
@@ -630,3 +629,16 @@ class ToolButton(QToolButton):
         w2, h2 = self.minSize
         ToolButton.minSize = max(w1, w2), max(h1, h2)
         return QSize(*ToolButton.minSize)
+
+
+class ZoomWidget(QSpinBox):
+
+    def __init__(self, value=100):
+        super(ZoomWidget, self).__init__()
+        self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.setRange(1, 500)
+        self.setSuffix(' %')
+        self.setValue(value)
+        self.setToolTip(u'Zoom Level')
+        self.setStatusTip(self.toolTip())
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
