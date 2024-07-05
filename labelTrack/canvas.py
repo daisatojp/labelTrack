@@ -151,8 +151,8 @@ class Canvas(QWidget):
                 # pan
                 delta_x = pos.x() - self.pan_initial_pos.x()
                 delta_y = pos.y() - self.pan_initial_pos.y()
-                self.scrollRequest.emit(delta_x, Qt.Horizontal)
-                self.scrollRequest.emit(delta_y, Qt.Vertical)
+                self.scrollRequest.emit(delta_x, Qt.Orientation.Horizontal)
+                self.scrollRequest.emit(delta_y, Qt.Orientation.Vertical)
                 self.update()
             self.p.update_bbox_list_by_canvas()
             return
@@ -273,7 +273,7 @@ class Canvas(QWidget):
     def wheelEvent(self, event: QWheelEvent) -> None:
         qt_version = 4 if hasattr(event, "delta") else 5
         if qt_version == 4:
-            if event.orientation() == Qt.Vertical:
+            if event.orientation() == Qt.Orientation.Vertical:
                 v_delta = event.delta()
                 h_delta = 0
             else:
@@ -284,8 +284,8 @@ class Canvas(QWidget):
             h_delta = delta.x()
             v_delta = delta.y()
 
-        mods = event.modifiers()
-        if Qt.KeyboardModifier.ControlModifier == int(mods) and v_delta:
+        modifier = event.modifiers()
+        if (Qt.KeyboardModifier.ControlModifier == modifier) and v_delta:
             self.zoomRequest.emit(v_delta)
         else:
             v_delta and self.scrollRequest.emit(v_delta, Qt.Orientation.Vertical)

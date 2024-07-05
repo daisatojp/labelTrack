@@ -235,6 +235,25 @@ class MainWindow(QMainWindow, WindowMixin):
         self.label_coordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.label_coordinates)
 
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if not self.may_continue():
+            event.ignore()
+        settings.set(SETTINGS_KEY_IMAGE_DIR, self.image_dir if self.image_dir is not None else '.')
+        settings.set(SETTINGS_KEY_LABEL_PATH, self.label_path if self.label_path is not None else '.')
+        settings.set(SETTINGS_KEY_WINDOW_X, self.pos().x())
+        settings.set(SETTINGS_KEY_WINDOW_Y, self.pos().y())
+        settings.set(SETTINGS_KEY_WINDOW_W, self.size().width())
+        settings.set(SETTINGS_KEY_WINDOW_H, self.size().height())
+        settings.set(SETTINGS_KEY_AUTO_SAVE, self.auto_saving.isChecked())
+        settings.save()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        if (self.canvas) and \
+           (not self.image.isNull()) and \
+           (self.zoom_mode != self.MANUAL_ZOOM):
+            self.adjust_scale()
+        super(MainWindow, self).resizeEvent(event)
+
     def status(self, message, delay=5000):
         self.statusBar().showMessage(message, delay)
 
@@ -267,24 +286,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.img_list_widget.addItem(item)
         self.img_list_widget.setCurrentRow(0)
         self.load_image()
-
-    def resizeEvent(self, event):
-        if self.canvas and not self.image.isNull()\
-           and self.zoom_mode != self.MANUAL_ZOOM:
-            self.adjust_scale()
-        super(MainWindow, self).resizeEvent(event)
-
-    def closeEvent(self, event):
-        if not self.may_continue():
-            event.ignore()
-        settings.set(SETTINGS_KEY_IMAGE_DIR, self.image_dir if self.image_dir is not None else '.')
-        settings.set(SETTINGS_KEY_LABEL_PATH, self.label_path if self.label_path is not None else '.')
-        settings.set(SETTINGS_KEY_WINDOW_X, self.pos().x())
-        settings.set(SETTINGS_KEY_WINDOW_Y, self.pos().y())
-        settings.set(SETTINGS_KEY_WINDOW_W, self.size().width())
-        settings.set(SETTINGS_KEY_WINDOW_H, self.size().height())
-        settings.set(SETTINGS_KEY_AUTO_SAVE, self.auto_saving.isChecked())
-        settings.save()
 
     def open_image_dir_dialog(self, _value=False):
         if not self.may_continue():
@@ -396,8 +397,8 @@ class MainWindow(QMainWindow, WindowMixin):
     def zoom_request(self, delta):
         # get the current scrollbar positions
         # calculate the percentages ~ coordinates
-        h_bar = self.scroll_bars[Qt.Horizontal]
-        v_bar = self.scroll_bars[Qt.Vertical]
+        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
+        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
         # get the current maximum, to know the difference after zooming
         h_bar_max = h_bar.maximum()
         v_bar_max = v_bar.maximum()
