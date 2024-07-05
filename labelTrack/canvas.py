@@ -14,7 +14,7 @@ CURSOR_GRAB = Qt.CursorShape.OpenHandCursor
 
 class Canvas(QWidget):
     zoomRequest = pyqtSignal(int)
-    scrollRequest = pyqtSignal(int, int)
+    scrollRequest = pyqtSignal(int, object)
     newShape = pyqtSignal()
     selectionChanged = pyqtSignal(bool)
     shapeMoved = pyqtSignal()
@@ -53,48 +53,39 @@ class Canvas(QWidget):
         # initialisation for panning
         self.pan_initial_pos = QPoint()
 
-    def set_drawing_color(self, qcolor):
-        self.drawing_line_color = qcolor
-        self.drawing_rect_color = qcolor
-
-    def enterEvent(self, ev):
+    def enterEvent(self, event: QEnterEvent) -> None:
         self.override_cursor(self._cursor)
 
-    def leaveEvent(self, ev):
+    def focusOutEvent(self, event: QFocusEvent) -> None:
         self.restore_cursor()
 
-    def focusOutEvent(self, ev):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        key = event.key()
+        if   key == Qt.Key.Key_Escape and self.current:
+            print('ESC press')
+            self.current = None
+            self.drawingPolygon.emit(False)
+            self.update()
+        elif key == Qt.Key.Key_Return and self.can_close_shape():
+            self.finalise()
+        elif key == Qt.Key.Key_Left and self.selected_shape:
+            self.move_one_pixel('Left')
+        elif key == Qt.Key.Key_Right and self.selected_shape:
+            self.move_one_pixel('Right')
+        elif key == Qt.Key.Key_Up and self.selected_shape:
+            self.move_one_pixel('Up')
+        elif key == Qt.Key.Key_Down and self.selected_shape:
+            self.move_one_pixel('Down')
+
+    def leaveEvent(self, event: QEvent) -> None:
         self.restore_cursor()
 
-    def isVisible(self, shape):
-        return self.visible.get(shape, True)
+    def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:
+        pass
 
-    def drawing(self):
-        return self.mode == self.CREATE
-
-    def editing(self):
-        return self.mode == self.EDIT
-
-    def set_editing(self, value=True):
-        self.mode = self.EDIT if value else self.CREATE
-        if not value:  # Create
-            self.un_highlight()
-            self.de_select_shape()
-        self.prev_point = QPointF()
-        self.repaint()
-
-    def un_highlight(self, shape=None):
-        if shape == None or shape == self.h_shape:
-            if self.h_shape:
-                self.h_shape.highlight_clear()
-            self.h_vertex = self.h_shape = None
-
-    def selected_vertex(self):
-        return self.h_vertex is not None
-
-    def mouseMoveEvent(self, ev):
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Update line with last point and current coordinates."""
-        pos = self.transform_pos(ev.pos())
+        pos = self.transform_pos(event.pos())
         self.p.label_coordinates.setText(
             f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
         # Polygon drawing.
@@ -132,7 +123,7 @@ class Canvas(QWidget):
             return
 
         # Polygon/Vertex moving.
-        if ev.buttons() == Qt.MouseButton.LeftButton:
+        if event.buttons() == Qt.MouseButton.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
                 self.shapeMoved.emit()
@@ -207,32 +198,137 @@ class Canvas(QWidget):
             self.h_vertex, self.h_shape = None, None
             self.override_cursor(CURSOR_DEFAULT)
 
-    def mousePressEvent(self, ev):
-        pos = self.transform_pos(ev.pos())
-        if ev.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        pos = self.transform_pos(event.pos())
+        if event.button() == Qt.MouseButton.LeftButton:
             if self.drawing():
                 self.handle_drawing(pos)
             else:
                 selection = self.select_shape_point(pos)
                 self.prev_point = pos
                 if selection is None:
-                    QApplication.setOverrideCursor(QCursor(Qt.OpenHandCursor))
+                    QApplication.setOverrideCursor(QCursor(Qt.CursorShape.OpenHandCursor))
                     self.pan_initial_pos = pos
         self.update()
 
-    def mouseReleaseEvent(self, ev):
-        if ev.button() == Qt.MouseButton.LeftButton and self.selected_shape:
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if   event.button() == Qt.MouseButton.LeftButton and self.selected_shape:
             if self.selected_vertex():
                 self.override_cursor(CURSOR_POINT)
             else:
                 self.override_cursor(CURSOR_GRAB)
-        elif ev.button() == Qt.LeftButton:
-            pos = self.transform_pos(ev.pos())
+        elif event.button() == Qt.MouseButton.LeftButton:
+            pos = self.transform_pos(event.pos())
             if self.drawing():
                 self.handle_drawing(pos)
             else:
                 # pan
                 QApplication.restoreOverrideCursor()
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self.pixmap:
+            return super(Canvas, self).paintEvent(event)
+
+        p = self._painter
+        p.begin(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        p.scale(self.scale, self.scale)
+        p.translate(self.offset_to_center())
+
+        p.drawPixmap(0, 0, self.pixmap)
+        Shape.scale = self.scale
+        Shape.label_font_size = self.label_font_size
+        if self.shape is not None:
+            self.shape.paint(p)
+        if self.current:
+            self.current.paint(p)
+            self.line.paint(p)
+        if self.selected_shape_copy:
+            self.selected_shape_copy.paint(p)
+
+        # Paint rect
+        if self.current is not None and len(self.line) == 2:
+            left_top = self.line[0]
+            right_bottom = self.line[1]
+            rect_width = right_bottom.x() - left_top.x()
+            rect_height = right_bottom.y() - left_top.y()
+            p.setPen(self.drawing_rect_color)
+            brush = QBrush(Qt.BrushStyle.BDiagPattern)
+            p.setBrush(brush)
+            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
+
+        if self.drawing() and not self.prev_point.isNull() and not self.out_of_pixmap(self.prev_point):
+            p.setPen(QColor(0, 0, 0))
+            p.drawLine(int(self.prev_point.x()), 0, int(self.prev_point.x()), int(self.pixmap.height()))
+            p.drawLine(0, int(self.prev_point.y()), int(self.pixmap.width()), int(self.prev_point.y()))
+
+        self.setAutoFillBackground(True)
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
+        self.setPalette(pal)
+        p.end()
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        qt_version = 4 if hasattr(event, "delta") else 5
+        if qt_version == 4:
+            if event.orientation() == Qt.Vertical:
+                v_delta = event.delta()
+                h_delta = 0
+            else:
+                h_delta = event.delta()
+                v_delta = 0
+        else:
+            delta = event.angleDelta()
+            h_delta = delta.x()
+            v_delta = delta.y()
+
+        mods = event.modifiers()
+        if Qt.KeyboardModifier.ControlModifier == int(mods) and v_delta:
+            self.zoomRequest.emit(v_delta)
+        else:
+            v_delta and self.scrollRequest.emit(v_delta, Qt.Orientation.Vertical)
+            h_delta and self.scrollRequest.emit(h_delta, Qt.Orientation.Horizontal)
+        event.accept()
+
+    def sizeHint(self):
+        return self.minimumSizeHint()
+
+    def minimumSizeHint(self):
+        if self.pixmap:
+            return self.scale * self.pixmap.size()
+        return super(Canvas, self).minimumSizeHint()
+
+    def set_drawing_color(self, qcolor):
+        self.drawing_line_color = qcolor
+        self.drawing_rect_color = qcolor
+
+    def isVisible(self, shape):
+        return self.visible.get(shape, True)
+
+    def drawing(self):
+        return self.mode == self.CREATE
+
+    def editing(self):
+        return self.mode == self.EDIT
+
+    def set_editing(self, value=True):
+        self.mode = self.EDIT if value else self.CREATE
+        if not value:  # Create
+            self.un_highlight()
+            self.de_select_shape()
+        self.prev_point = QPointF()
+        self.repaint()
+
+    def un_highlight(self, shape=None):
+        if shape == None or shape == self.h_shape:
+            if self.h_shape:
+                self.h_shape.highlight_clear()
+            self.h_vertex = self.h_shape = None
+
+    def selected_vertex(self):
+        return self.h_vertex is not None
 
     def end_move(self, copy=False):
         assert self.selected_shape
@@ -279,9 +375,6 @@ class Canvas(QWidget):
 
     def can_close_shape(self):
         return self.drawing() and self.current and len(self.current) > 2
-
-    def mouseDoubleClickEvent(self, ev):
-        pass
 
     def select_shape(self, shape):
         self.de_select_shape()
@@ -408,51 +501,6 @@ class Canvas(QWidget):
         if not self.bounded_move_shape(shape, point - offset):
             self.bounded_move_shape(shape, point + offset)
 
-    def paintEvent(self, event):
-        if not self.pixmap:
-            return super(Canvas, self).paintEvent(event)
-
-        p = self._painter
-        p.begin(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-
-        p.scale(self.scale, self.scale)
-        p.translate(self.offset_to_center())
-
-        p.drawPixmap(0, 0, self.pixmap)
-        Shape.scale = self.scale
-        Shape.label_font_size = self.label_font_size
-        if self.shape is not None:
-            self.shape.paint(p)
-        if self.current:
-            self.current.paint(p)
-            self.line.paint(p)
-        if self.selected_shape_copy:
-            self.selected_shape_copy.paint(p)
-
-        # Paint rect
-        if self.current is not None and len(self.line) == 2:
-            left_top = self.line[0]
-            right_bottom = self.line[1]
-            rect_width = right_bottom.x() - left_top.x()
-            rect_height = right_bottom.y() - left_top.y()
-            p.setPen(self.drawing_rect_color)
-            brush = QBrush(Qt.BrushStyle.BDiagPattern)
-            p.setBrush(brush)
-            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
-
-        if self.drawing() and not self.prev_point.isNull() and not self.out_of_pixmap(self.prev_point):
-            p.setPen(QColor(0, 0, 0))
-            p.drawLine(int(self.prev_point.x()), 0, int(self.prev_point.x()), int(self.pixmap.height()))
-            p.drawLine(0, int(self.prev_point.y()), int(self.pixmap.width()), int(self.prev_point.y()))
-
-        self.setAutoFillBackground(True)
-        pal = self.palette()
-        pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
-        self.setPalette(pal)
-        p.end()
-
     def transform_pos(self, point):
         """Convert from widget-logical coordinates to painter-logical coordinates."""
         pointf = QPointF(point.x(), point.y())
@@ -490,56 +538,6 @@ class Canvas(QWidget):
         # m = (p1-p2).manhattanLength()
         # print "d %.2f, m %d, %.2f" % (d, m, d - m)
         return distance(p1 - p2) < self.epsilon
-
-    # These two, along with a call to adjustSize are required for the
-    # scroll area.
-    def sizeHint(self):
-        return self.minimumSizeHint()
-
-    def minimumSizeHint(self):
-        if self.pixmap:
-            return self.scale * self.pixmap.size()
-        return super(Canvas, self).minimumSizeHint()
-
-    def wheelEvent(self, ev):
-        qt_version = 4 if hasattr(ev, "delta") else 5
-        if qt_version == 4:
-            if ev.orientation() == Qt.Vertical:
-                v_delta = ev.delta()
-                h_delta = 0
-            else:
-                h_delta = ev.delta()
-                v_delta = 0
-        else:
-            delta = ev.angleDelta()
-            h_delta = delta.x()
-            v_delta = delta.y()
-
-        mods = ev.modifiers()
-        if Qt.ControlModifier == int(mods) and v_delta:
-            self.zoomRequest.emit(v_delta)
-        else:
-            v_delta and self.scrollRequest.emit(v_delta, Qt.Vertical)
-            h_delta and self.scrollRequest.emit(h_delta, Qt.Horizontal)
-        ev.accept()
-
-    def keyPressEvent(self, ev):
-        key = ev.key()
-        if key == Qt.Key_Escape and self.current:
-            print('ESC press')
-            self.current = None
-            self.drawingPolygon.emit(False)
-            self.update()
-        elif key == Qt.Key_Return and self.can_close_shape():
-            self.finalise()
-        elif key == Qt.Key_Left and self.selected_shape:
-            self.move_one_pixel('Left')
-        elif key == Qt.Key_Right and self.selected_shape:
-            self.move_one_pixel('Right')
-        elif key == Qt.Key_Up and self.selected_shape:
-            self.move_one_pixel('Up')
-        elif key == Qt.Key_Down and self.selected_shape:
-            self.move_one_pixel('Down')
 
     def move_one_pixel(self, direction):
         # print(self.selectedShape.points)
