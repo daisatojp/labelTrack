@@ -13,9 +13,7 @@ def new_action(
         text: str,
         slot=None,
         shortcut=None,
-        icon=None,
-        checkable=False):
-    """Create a new action and assign callbacks, shortcuts, etc."""
+        icon=None):
     a = QAction(text, parent)
     if icon is not None:
         a.setIcon(read_icon(icon))
@@ -26,8 +24,6 @@ def new_action(
             a.setShortcut(shortcut)
     if slot is not None:
         a.triggered.connect(slot)
-    if checkable:
-        a.setCheckable(True)
     return a
 
 

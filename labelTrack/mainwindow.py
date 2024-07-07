@@ -124,12 +124,12 @@ class MainWindow(QMainWindow):
             shortcut='Ctrl+=', icon='zoom')
         self.action_fit_window = new_action(
             self, 'Fit Window', self.set_fit_window,
-            shortcut='Ctrl+F', icon='fit-window',
-            checkable=True)
+            shortcut='Ctrl+F', icon='fit-window')
+        self.action_fit_window.setCheckable(True)
         self.action_fit_width = new_action(
             self, 'Fit Width', self.set_fit_width,
-            shortcut='Ctrl+Shift+F', icon='fit-width',
-            checkable=True)
+            shortcut='Ctrl+Shift+F', icon='fit-width')
+        self.action_fit_width.setCheckable(True)
         self.zoom_actions = (
             self.zoom_widget,
             self.action_zoom_in,
