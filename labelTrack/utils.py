@@ -10,11 +10,8 @@ from PyQt6.QtWidgets import *
 
 def new_action(
         parent: QWidget,
-        text: str,
-        slot=None):
+        text: str):
     a = QAction(text, parent)
-    if slot is not None:
-        a.triggered.connect(slot)
     return a
 
 
