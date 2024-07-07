@@ -74,40 +74,52 @@ class MainWindow(QMainWindow):
 
         self.action_quit = new_action(
             self, 'Quit', self.close,
-            'Ctrl+Q', icon='quit')
+            'Ctrl+Q')
+        self.action_quit.setIcon(read_icon('quit'))
         self.action_open_image_dir = new_action(
             self, 'Open Image Dir', self.open_image_dir_dialog,
-            shortcut=None, icon='open')
+            shortcut=None)
+        self.action_open_image_dir.setIcon(read_icon('open'))
         self.action_open_label_file = new_action(
             self, 'Open Label File', self.open_label_file_dialog,
-            shortcut=None, icon='open')
+            shortcut=None)
+        self.action_open_label_file.setIcon(read_icon('open'))
         self.action_next_image = new_action(
             self, 'Next Image', self.open_next_image,
-            shortcut='d', icon='next')
+            shortcut='d')
+        self.action_next_image.setIcon(read_icon('next'))
         self.action_prev_image = new_action(
             self, 'Previous Image', self.open_prev_image,
-            shortcut='a', icon='prev')
+            shortcut='a')
+        self.action_prev_image.setIcon(read_icon('prev'))
         self.action_save = new_action(
             self, 'Save', self.save_file,
-            shortcut='Ctrl+s', icon='save')
+            shortcut='Ctrl+s')
+        self.action_save.setIcon(read_icon('save'))
         self.action_create_object = new_action(
             self, 'Create Object', self.create_object,
-            shortcut='w', icon='objects')
+            shortcut='w')
+        self.action_create_object.setIcon(read_icon('objects'))
         self.action_delete_object = new_action(
             self, 'Delete Object', self.delete_object,
-            shortcut='c', icon='close')
+            shortcut='c')
+        self.action_delete_object.setIcon(read_icon('close'))
         self.action_copy_object = new_action(
             self, 'Copy Object', self.copy_object,
-            shortcut='r', icon='copy')
+            shortcut='r')
+        self.action_copy_object.setIcon(read_icon('copy'))
         self.action_next_image_and_copy = new_action(
             self, 'Next Image and Copy', self.next_image_and_copy,
-            shortcut='t', icon='next')
+            shortcut='t')
+        self.action_next_image_and_copy.setIcon(read_icon('next'))
         self.action_next_image_and_delete = new_action(
             self, 'Next Image and Delete', self.next_image_and_delete,
-            shortcut='v', icon='next')
+            shortcut='v')
+        self.action_next_image_and_delete.setIcon(read_icon('next'))
         self.action_show_info = new_action(
             self, 'info', self.show_info_dialog,
-            shortcut=None, icon='help')
+            shortcut=None)
+        self.action_show_info.setIcon(read_icon('help'))
         self.zoom_widget = ZoomWidget()
         self.zoom_widget.setEnabled(True)
         self.zoom_widget.valueChanged.connect(self.paint_canvas)
@@ -115,20 +127,25 @@ class MainWindow(QMainWindow):
         self.action_zoom.setDefaultWidget(self.zoom_widget)
         self.action_zoom_in = new_action(
             self, 'Zoom In', partial(self.add_zoom, 10),
-            shortcut='Ctrl++', icon='zoom-in')
+            shortcut='Ctrl++')
+        self.action_zoom_in.setIcon(read_icon('zoom-in'))
         self.action_zoom_out = new_action(
             self, 'Zoom Out', partial(self.add_zoom, -10),
-            shortcut='Ctrl+-', icon='zoom-out')
+            shortcut='Ctrl+-')
+        self.action_zoom_out.setIcon(read_icon('zoom-out'))
         self.action_zoom_org = new_action(
             self, 'Original Size', partial(self.set_zoom, 100),
-            shortcut='Ctrl+=', icon='zoom')
+            shortcut='Ctrl+=')
+        self.action_zoom_org.setIcon(read_icon('zoom'))
         self.action_fit_window = new_action(
             self, 'Fit Window', self.set_fit_window,
-            shortcut='Ctrl+F', icon='fit-window')
+            shortcut='Ctrl+F')
+        self.action_fit_window.setIcon(read_icon('fit-window'))
         self.action_fit_window.setCheckable(True)
         self.action_fit_width = new_action(
             self, 'Fit Width', self.set_fit_width,
-            shortcut='Ctrl+Shift+F', icon='fit-width')
+            shortcut='Ctrl+Shift+F')
+        self.action_fit_width.setIcon(read_icon('fit-width'))
         self.action_fit_width.setCheckable(True)
         self.zoom_actions = (
             self.zoom_widget,

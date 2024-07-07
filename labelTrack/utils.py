@@ -12,11 +12,8 @@ def new_action(
         parent: QWidget,
         text: str,
         slot=None,
-        shortcut=None,
-        icon=None):
+        shortcut=None):
     a = QAction(text, parent)
-    if icon is not None:
-        a.setIcon(read_icon(icon))
     if shortcut is not None:
         if isinstance(shortcut, (list, tuple)):
             a.setShortcuts(shortcut)
