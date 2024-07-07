@@ -12,16 +12,7 @@ from labelTrack.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from labelTrack.canvas import Canvas
 
 
-class WindowMixin(object):
-
-    def menu(self, title, actions=None):
-        menu = self.menuBar().addMenu(title)
-        if actions:
-            add_actions(menu, actions)
-        return menu
-
-
-class MainWindow(QMainWindow, WindowMixin):
+class MainWindow(QMainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
 
     def __init__(self, image_dir, label_path):
@@ -151,10 +142,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.FIT_WINDOW: self.scale_fit_window,
             self.FIT_WIDTH: self.scale_fit_width,
             self.MANUAL_ZOOM: lambda: 1}
-        self.menus_file = self.menu('File')
-        self.menus_edit = self.menu('Edit')
-        self.menus_view = self.menu('View')
-        self.menus_help = self.menu('Help')
+        self.menus_file = self.menuBar().addMenu('File')
+        self.menus_edit = self.menuBar().addMenu('Edit')
+        self.menus_view = self.menuBar().addMenu('View')
+        self.menus_help = self.menuBar().addMenu('Help')
         self.auto_saving = QAction('autoSaveMode', self)
         self.auto_saving.setCheckable(True)
         self.auto_saving.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
