@@ -11,14 +11,8 @@ from PyQt6.QtWidgets import *
 def new_action(
         parent: QWidget,
         text: str,
-        slot=None,
-        shortcut=None):
+        slot=None):
     a = QAction(text, parent)
-    if shortcut is not None:
-        if isinstance(shortcut, (list, tuple)):
-            a.setShortcuts(shortcut)
-        else:
-            a.setShortcut(shortcut)
     if slot is not None:
         a.triggered.connect(slot)
     return a
