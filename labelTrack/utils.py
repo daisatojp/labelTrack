@@ -8,16 +8,6 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
 
-def add_actions(widget, actions):
-    for action in actions:
-        if action is None:
-            widget.addSeparator()
-        elif isinstance(action, QMenu):
-            widget.addMenu(action)
-        else:
-            widget.addAction(action)
-
-
 def distance(p):
     return sqrt(p.x() * p.x() + p.y() * p.y())
 

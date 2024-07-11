@@ -56,85 +56,81 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
         self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
-        self.action_quit = QAction('Quit', self)
-        self.action_quit.setIcon(read_icon('quit'))
-        self.action_quit.setShortcut('Ctrl+Q')
-        self.action_quit.triggered.connect(self.close)
-        self.action_open_image_dir = QAction('Open Image Dir', self)
-        self.action_open_image_dir.setIcon(read_icon('open'))
-        self.action_open_image_dir.triggered.connect(self.open_image_dir_dialog)
-        self.action_open_label_file = QAction('Open Label File', self)
-        self.action_open_label_file.setIcon(read_icon('open'))
-        self.action_open_label_file.triggered.connect(self.open_label_file_dialog)
-        self.action_next_image = QAction('Next Image', self)
-        self.action_next_image.setIcon(read_icon('next'))
-        self.action_next_image.setShortcut('d')
-        self.action_next_image.triggered.connect(self.open_next_image)
-        self.action_prev_image = QAction('Previous Image', self)
-        self.action_prev_image.setIcon(read_icon('prev'))
-        self.action_prev_image.setShortcut('a')
-        self.action_prev_image.triggered.connect(self.open_prev_image)
-        self.action_save = QAction('Save', self)
-        self.action_save.setIcon(read_icon('save'))
-        self.action_save.setShortcut('Ctrl+s')
-        self.action_save.triggered.connect(self.save_file)
-        self.action_create_object = QAction('Create Object', self)
-        self.action_create_object.setIcon(read_icon('objects'))
-        self.action_create_object.setShortcut('w')
-        self.action_create_object.triggered.connect(self.create_object)
-        self.action_delete_object = QAction('Delete Object', self)
-        self.action_delete_object.setIcon(read_icon('close'))
-        self.action_delete_object.setShortcut('c')
-        self.action_delete_object.triggered.connect(self.delete_object)
-        self.action_copy_object = QAction('Copy Object', self)
-        self.action_copy_object.setIcon(read_icon('copy'))
-        self.action_copy_object.setShortcut('r')
-        self.action_copy_object.triggered.connect(self.copy_object)
-        self.action_next_image_and_copy = QAction('Next Image and Copy', self)
-        self.action_next_image_and_copy.setIcon(read_icon('next'))
-        self.action_next_image_and_copy.setShortcut('t')
-        self.action_next_image_and_copy.triggered.connect(self.next_image_and_copy)
-        self.action_next_image_and_delete = QAction('Next Image and Delete', self)
-        self.action_next_image_and_delete.setIcon(read_icon('next'))
-        self.action_next_image_and_delete.setShortcut('v')
-        self.action_next_image_and_delete.triggered.connect(self.next_image_and_delete)
-        self.action_show_info = QAction('info', self)
-        self.action_show_info.setIcon(read_icon('help'))
-        self.action_show_info.triggered.connect(self.show_info_dialog)
+        self.quit_action = QAction('Quit', self)
+        self.quit_action.setIcon(read_icon('quit'))
+        self.quit_action.setShortcut('Ctrl+Q')
+        self.quit_action.triggered.connect(self.close)
+        self.open_image_dir_action = QAction('Open Image Dir', self)
+        self.open_image_dir_action.setIcon(read_icon('open'))
+        self.open_image_dir_action.triggered.connect(self.open_image_dir_dialog)
+        self.open_label_file_action = QAction('Open Label File', self)
+        self.open_label_file_action.setIcon(read_icon('open'))
+        self.open_label_file_action.triggered.connect(self.open_label_file_dialog)
+        self.next_image_action = QAction('Next Image', self)
+        self.next_image_action.setIcon(read_icon('next'))
+        self.next_image_action.setShortcut('d')
+        self.next_image_action.triggered.connect(self.open_next_image)
+        self.prev_image_action = QAction('Previous Image', self)
+        self.prev_image_action.setIcon(read_icon('prev'))
+        self.prev_image_action.setShortcut('a')
+        self.prev_image_action.triggered.connect(self.open_prev_image)
+        self.save_action = QAction('Save', self)
+        self.save_action.setIcon(read_icon('save'))
+        self.save_action.setShortcut('Ctrl+s')
+        self.save_action.triggered.connect(self.save_file)
+        self.create_object_action = QAction('Create Object', self)
+        self.create_object_action.setIcon(read_icon('objects'))
+        self.create_object_action.setShortcut('w')
+        self.create_object_action.triggered.connect(self.create_object)
+        self.delete_object_action = QAction('Delete Object', self)
+        self.delete_object_action.setIcon(read_icon('close'))
+        self.delete_object_action.setShortcut('c')
+        self.delete_object_action.triggered.connect(self.delete_object)
+        self.copy_object_action = QAction('Copy Object', self)
+        self.copy_object_action.setIcon(read_icon('copy'))
+        self.copy_object_action.setShortcut('r')
+        self.copy_object_action.triggered.connect(self.copy_object)
+        self.next_image_and_copy_action = QAction('Next Image and Copy', self)
+        self.next_image_and_copy_action.setIcon(read_icon('next'))
+        self.next_image_and_copy_action.setShortcut('t')
+        self.next_image_and_copy_action.triggered.connect(self.next_image_and_copy)
+        self.next_image_and_delete_action = QAction('Next Image and Delete', self)
+        self.next_image_and_delete_action.setIcon(read_icon('next'))
+        self.next_image_and_delete_action.setShortcut('v')
+        self.next_image_and_delete_action.triggered.connect(self.next_image_and_delete)
+        self.show_info_action = QAction('info', self)
+        self.show_info_action.setIcon(read_icon('help'))
+        self.show_info_action.triggered.connect(self.show_info_dialog)
+        self.auto_saving_action = QAction('autoSaveMode', self)
+        self.auto_saving_action.setCheckable(True)
+        self.auto_saving_action.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
         self.zoom_widget = ZoomWidget()
         self.zoom_widget.setEnabled(True)
         self.zoom_widget.valueChanged.connect(self.paint_canvas)
-        self.action_zoom = QWidgetAction(self)
-        self.action_zoom.setDefaultWidget(self.zoom_widget)
-        self.action_zoom_in = QAction('Zoom In', self)
-        self.action_zoom_in.setIcon(read_icon('zoom-in'))
-        self.action_zoom_in.setShortcut('Ctrl++')
-        self.action_zoom_in.triggered.connect(partial(self.add_zoom, 10))
-        self.action_zoom_out = QAction('Zoom Out', self)
-        self.action_zoom_out.setIcon(read_icon('zoom-out'))
-        self.action_zoom_out.setShortcut('Ctrl+-')
-        self.action_zoom_out.triggered.connect(partial(self.add_zoom, -10))
-        self.action_zoom_org = QAction('Original Size', self)
-        self.action_zoom_org.setIcon(read_icon('zoom'))
-        self.action_zoom_org.setShortcut('Ctrl+=')
-        self.action_zoom_org.triggered.connect(partial(self.set_zoom, 100))
-        self.action_fit_window = QAction('Fit Window', self)
-        self.action_fit_window.setIcon(read_icon('fit-window'))
-        self.action_fit_window.setShortcut('Ctrl+F')
-        self.action_fit_window.triggered.connect(self.set_fit_window)
-        self.action_fit_window.setCheckable(True)
-        self.action_fit_width = QAction('Fit Width', self)
-        self.action_fit_width.setIcon(read_icon('fit-width'))
-        self.action_fit_width.setShortcut('Ctrl+Shift+F')
-        self.action_fit_width.triggered.connect(self.set_fit_width)
-        self.action_fit_width.setCheckable(True)
-        self.zoom_actions = (
-            self.zoom_widget,
-            self.action_zoom_in,
-            self.action_zoom_out,
-            self.action_zoom_org,
-            self.action_fit_window,
-            self.action_fit_width)
+        self.zoom_action = QWidgetAction(self)
+        self.zoom_action.setDefaultWidget(self.zoom_widget)
+        self.zoom_in_action = QAction('Zoom In', self)
+        self.zoom_in_action.setIcon(read_icon('zoom-in'))
+        self.zoom_in_action.setShortcut('Ctrl++')
+        self.zoom_in_action.triggered.connect(partial(self.add_zoom, 10))
+        self.zoom_out_action = QAction('Zoom Out', self)
+        self.zoom_out_action.setIcon(read_icon('zoom-out'))
+        self.zoom_out_action.setShortcut('Ctrl+-')
+        self.zoom_out_action.triggered.connect(partial(self.add_zoom, -10))
+        self.zoom_org_action = QAction('Original Size', self)
+        self.zoom_org_action.setIcon(read_icon('zoom'))
+        self.zoom_org_action.setShortcut('Ctrl+=')
+        self.zoom_org_action.triggered.connect(partial(self.set_zoom, 100))
+        self.fit_window_action = QAction('Fit Window', self)
+        self.fit_window_action.setIcon(read_icon('fit-window'))
+        self.fit_window_action.setShortcut('Ctrl+F')
+        self.fit_window_action.triggered.connect(self.set_fit_window)
+        self.fit_window_action.setCheckable(True)
+        self.fit_width_action = QAction('Fit Width', self)
+        self.fit_width_action.setIcon(read_icon('fit-width'))
+        self.fit_width_action.setShortcut('Ctrl+Shift+F')
+        self.fit_width_action.triggered.connect(self.set_fit_width)
+        self.fit_width_action.setCheckable(True)
         self.zoom_mode = self.MANUAL_ZOOM
         self.scalers = {
             self.FIT_WINDOW: self.scale_fit_window,
@@ -144,56 +140,43 @@ class MainWindow(QMainWindow):
         self.menus_edit = self.menuBar().addMenu('Edit')
         self.menus_view = self.menuBar().addMenu('View')
         self.menus_help = self.menuBar().addMenu('Help')
-        self.auto_saving = QAction('autoSaveMode', self)
-        self.auto_saving.setCheckable(True)
-        self.auto_saving.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
-        add_actions(
-            self.menus_file,
-            (self.action_open_image_dir,
-             self.action_open_label_file,
-             self.action_save,
-             self.action_next_image,
-             self.action_prev_image,
-             self.action_quit))
-        add_actions(
-            self.menus_edit,
-            (self.action_create_object,
-             self.action_delete_object,
-             self.action_copy_object,
-             self.action_next_image_and_copy,
-             self.action_next_image_and_delete,))
-        add_actions(
-            self.menus_view,
-            (self.auto_saving,
-             None,
-             self.action_zoom_in,
-             self.action_zoom_out,
-             self.action_zoom_org,
-             None,
-             self.action_fit_window,
-             self.action_fit_width))
-        add_actions(
-            self.menus_help,
-            (self.action_show_info,))
+        self.menus_file.addAction(self.open_image_dir_action)
+        self.menus_file.addAction(self.open_label_file_action)
+        self.menus_file.addAction(self.save_action)
+        self.menus_file.addAction(self.next_image_action)
+        self.menus_file.addAction(self.prev_image_action)
+        self.menus_file.addAction(self.quit_action)
+        self.menus_edit.addAction(self.create_object_action)
+        self.menus_edit.addAction(self.delete_object_action)
+        self.menus_edit.addAction(self.copy_object_action)
+        self.menus_edit.addAction(self.next_image_and_copy_action)
+        self.menus_edit.addAction(self.next_image_and_delete_action)
+        self.menus_view.addAction(self.auto_saving_action)
+        self.menus_view.addSeparator()
+        self.menus_view.addAction(self.zoom_in_action)
+        self.menus_view.addAction(self.zoom_out_action)
+        self.menus_view.addAction(self.zoom_org_action)
+        self.menus_view.addSeparator()
+        self.menus_view.addAction(self.fit_window_action)
+        self.menus_view.addAction(self.fit_width_action)
+        self.menus_help.addAction(self.show_info_action)
         self.toolbar = ToolBar('Tools')
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.addToolBar(Qt.ToolBarArea.LeftToolBarArea, self.toolbar)
-        add_actions(
-            self.toolbar,
-            (self.action_open_image_dir,
-             self.action_open_label_file,
-             self.action_next_image,
-             self.action_prev_image,
-             self.action_save,
-             None,
-             self.action_create_object,
-             self.action_delete_object,
-             None,
-             self.action_zoom_in,
-             self.action_zoom,
-             self.action_zoom_out,
-             self.action_fit_window,
-             self.action_fit_width))
+        self.toolbar.addAction(self.open_image_dir_action)
+        self.toolbar.addAction(self.open_label_file_action)
+        self.toolbar.addAction(self.next_image_action)
+        self.toolbar.addAction(self.prev_image_action)
+        self.toolbar.addAction(self.save_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.create_object_action)
+        self.toolbar.addAction(self.delete_object_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.zoom_in_action)
+        self.toolbar.addAction(self.zoom_action)
+        self.toolbar.addAction(self.zoom_out_action)
+        self.toolbar.addAction(self.fit_window_action)
+        self.toolbar.addAction(self.fit_width_action)
         self.statusBar().showMessage(f'{__appname__} started.')
         self.statusBar().show()
         self.image = QImage()
@@ -224,7 +207,7 @@ class MainWindow(QMainWindow):
         settings.set(SETTINGS_KEY_WINDOW_Y, self.pos().y())
         settings.set(SETTINGS_KEY_WINDOW_W, self.size().width())
         settings.set(SETTINGS_KEY_WINDOW_H, self.size().height())
-        settings.set(SETTINGS_KEY_AUTO_SAVE, self.auto_saving.isChecked())
+        settings.set(SETTINGS_KEY_AUTO_SAVE, self.auto_saving_action.isChecked())
         settings.save()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
@@ -248,7 +231,7 @@ class MainWindow(QMainWindow):
     def new_shape(self):
         self.update_bbox_list_by_canvas()
         self.canvas.set_editing(True)
-        self.action_create_object.setEnabled(True)
+        self.create_object_action.setEnabled(True)
         self.set_dirty()
 
     def toggle_polygons(self, value):
@@ -295,7 +278,7 @@ class MainWindow(QMainWindow):
     def open_prev_image(self, _value=False):
         cnt = self.img_list_widget.count()
         idx = self.img_list_widget.currentRow()
-        if self.auto_saving.isChecked():
+        if self.auto_saving_action.isChecked():
             self.save_file()
         if cnt <= 0:
             return
@@ -307,7 +290,7 @@ class MainWindow(QMainWindow):
     def open_next_image(self, _value=False):
         cnt = self.img_list_widget.count()
         idx = self.img_list_widget.currentRow()
-        if self.auto_saving.isChecked():
+        if self.auto_saving_action.isChecked():
             self.save_file()
         if idx + 1 < cnt:
             idx += 1
@@ -331,7 +314,7 @@ class MainWindow(QMainWindow):
         if self.image.isNull():
             return
         self.canvas.set_editing(False)
-        self.action_create_object.setEnabled(False)
+        self.create_object_action.setEnabled(False)
 
     def delete_object(self):
         self.canvas.shape = None
@@ -364,8 +347,8 @@ class MainWindow(QMainWindow):
         bar.setValue(int(bar.value() + bar.singleStep() * units))
 
     def set_zoom(self, value):
-        self.action_fit_width.setChecked(False)
-        self.action_fit_window.setChecked(False)
+        self.fit_width_action.setChecked(False)
+        self.fit_window_action.setChecked(False)
         self.zoom_mode = self.MANUAL_ZOOM
         self.zoom_widget.setValue(int(value))
 
@@ -416,17 +399,17 @@ class MainWindow(QMainWindow):
 
     def set_fit_window(self, value=True):
         if self.image.isNull():
-            self.action_fit_window.setChecked(False)
+            self.fit_window_action.setChecked(False)
             return
-        self.action_fit_width.setChecked(False)
+        self.fit_width_action.setChecked(False)
         self.zoom_mode = self.FIT_WINDOW
         self.adjust_scale()
 
     def set_fit_width(self, value=True):
         if self.image.isNull():
-            self.action_fit_width.setChecked(False)
+            self.fit_width_action.setChecked(False)
             return
-        self.action_fit_window.setChecked(False)
+        self.fit_window_action.setChecked(False)
         self.zoom_mode = self.FIT_WIDTH
         self.adjust_scale()
 
@@ -566,11 +549,11 @@ class MainWindow(QMainWindow):
 
     def set_dirty(self):
         self.dirty = True
-        self.action_save.setEnabled(True)
+        self.save_action.setEnabled(True)
 
     def set_clean(self):
         self.dirty = False
-        self.action_save.setEnabled(False)
+        self.save_action.setEnabled(False)
 
 
 class ToolBar(QToolBar):
@@ -584,9 +567,9 @@ class ToolBar(QToolBar):
         self.setContentsMargins(*m)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
 
-    def addAction(self, action):
+    def addAction(self, action: QAction) -> None:
         if isinstance(action, QWidgetAction):
-            return super(ToolBar, self).addAction(action)
+            super(ToolBar, self).addAction(action)
         btn = ToolButton()
         btn.setDefaultAction(action)
         btn.setToolButtonStyle(self.toolButtonStyle())
