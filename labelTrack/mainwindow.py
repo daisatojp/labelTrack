@@ -24,17 +24,6 @@ class MainWindow(QMainWindow):
         self.bbox_list = []
         self.dirty = False
 
-        self.label_list = QListWidget()
-        label_list_container = QWidget()
-        list_layout = QVBoxLayout()
-        list_layout.setContentsMargins(0, 0, 0, 0)
-        label_list_container.setLayout(list_layout)
-        list_layout.addWidget(self.label_list)
-
-        self.dock = QDockWidget('Object List', self)
-        self.dock.setObjectName('objects')
-        self.dock.setWidget(label_list_container)
-
         self.img_list_widget = QListWidget()
         self.img_list_widget.currentItemChanged.connect(self.file_current_item_changed)
         file_list_layout = QVBoxLayout()
@@ -64,13 +53,8 @@ class MainWindow(QMainWindow):
         self.canvas.drawingPolygon.connect(self.toggle_drawing_sensitive)
 
         self.setCentralWidget(scroll)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
         self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
-
-        self.dock.setFeatures(
-            QDockWidget.DockWidgetFeature.DockWidgetClosable |
-            QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         self.action_quit = QAction('Quit', self)
         self.action_quit.setIcon(read_icon('quit'))
@@ -262,7 +246,6 @@ class MainWindow(QMainWindow):
         self.load_image()
 
     def new_shape(self):
-        self.add_object_to_label_list()
         self.update_bbox_list_by_canvas()
         self.canvas.set_editing(True)
         self.action_create_object.setEnabled(True)
@@ -352,7 +335,6 @@ class MainWindow(QMainWindow):
 
     def delete_object(self):
         self.canvas.shape = None
-        self.remove_object_from_label_list()
         self.update_bbox_list_by_canvas()
         self.canvas.update()
 
@@ -523,9 +505,6 @@ class MainWindow(QMainWindow):
         cnt = self.img_list_widget.count()
         counter = f'[{idx + 1} / {cnt}]'
         self.setWindowTitle(f'{__appname__} {file_path} {counter}')
-        if self.label_list.count():
-            self.label_list.setCurrentItem(self.label_list.item(self.label_list.count() - 1))
-            self.label_list.item(self.label_list.count() - 1).setSelected(True)
         self.canvas.setFocus()
 
     def load_label(self):
@@ -553,10 +532,8 @@ class MainWindow(QMainWindow):
             shape.line_color = QColor(227, 79, 208, 100)
             shape.fill_color = QColor(227, 79, 208, 100)
             self.canvas.load_shape(shape)
-            self.add_object_to_label_list()
         else:
             self.canvas.load_shape(None)
-            self.remove_object_from_label_list()
 
     def read_bbox_list(self, idx):
         while len(self.bbox_list) <= idx:
@@ -586,15 +563,6 @@ class MainWindow(QMainWindow):
         else:
             self.update_bbox_list(idx, -1.0, -1.0, -1.0, -1.0)
         self.set_dirty()
-
-    def add_object_to_label_list(self):
-        item = QListWidgetItem('object')
-        item.setBackground(QColor(227, 79, 208, 100))
-        self.remove_object_from_label_list()
-        self.label_list.addItem(item)
-
-    def remove_object_from_label_list(self):
-        self.label_list.clear()
 
     def set_dirty(self):
         self.dirty = True
