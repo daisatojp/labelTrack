@@ -8,13 +8,6 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 
 
-def new_action(
-        parent: QWidget,
-        text: str):
-    a = QAction(text, parent)
-    return a
-
-
 def add_actions(widget, actions):
     for action in actions:
         if action is None:

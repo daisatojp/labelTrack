@@ -72,61 +72,49 @@ class MainWindow(QMainWindow):
             QDockWidget.DockWidgetFeature.DockWidgetClosable |
             QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
-        self.action_quit = new_action(
-            self, 'Quit')
+        self.action_quit = QAction('Quit', self)
         self.action_quit.setIcon(read_icon('quit'))
         self.action_quit.setShortcut('Ctrl+Q')
         self.action_quit.triggered.connect(self.close)
-        self.action_open_image_dir = new_action(
-            self, 'Open Image Dir')
+        self.action_open_image_dir = QAction('Open Image Dir', self)
         self.action_open_image_dir.setIcon(read_icon('open'))
         self.action_open_image_dir.triggered.connect(self.open_image_dir_dialog)
-        self.action_open_label_file = new_action(
-            self, 'Open Label File')
+        self.action_open_label_file = QAction('Open Label File', self)
         self.action_open_label_file.setIcon(read_icon('open'))
         self.action_open_label_file.triggered.connect(self.open_label_file_dialog)
-        self.action_next_image = new_action(
-            self, 'Next Image')
+        self.action_next_image = QAction('Next Image', self)
         self.action_next_image.setIcon(read_icon('next'))
         self.action_next_image.setShortcut('d')
         self.action_next_image.triggered.connect(self.open_next_image)
-        self.action_prev_image = new_action(
-            self, 'Previous Image')
+        self.action_prev_image = QAction('Previous Image', self)
         self.action_prev_image.setIcon(read_icon('prev'))
         self.action_prev_image.setShortcut('a')
         self.action_prev_image.triggered.connect(self.open_prev_image)
-        self.action_save = new_action(
-            self, 'Save')
+        self.action_save = QAction('Save', self)
         self.action_save.setIcon(read_icon('save'))
         self.action_save.setShortcut('Ctrl+s')
         self.action_save.triggered.connect(self.save_file)
-        self.action_create_object = new_action(
-            self, 'Create Object')
+        self.action_create_object = QAction('Create Object', self)
         self.action_create_object.setIcon(read_icon('objects'))
         self.action_create_object.setShortcut('w')
         self.action_create_object.triggered.connect(self.create_object)
-        self.action_delete_object = new_action(
-            self, 'Delete Object')
+        self.action_delete_object = QAction('Delete Object', self)
         self.action_delete_object.setIcon(read_icon('close'))
         self.action_delete_object.setShortcut('c')
         self.action_delete_object.triggered.connect(self.delete_object)
-        self.action_copy_object = new_action(
-            self, 'Copy Object')
+        self.action_copy_object = QAction('Copy Object', self)
         self.action_copy_object.setIcon(read_icon('copy'))
         self.action_copy_object.setShortcut('r')
         self.action_copy_object.triggered.connect(self.copy_object)
-        self.action_next_image_and_copy = new_action(
-            self, 'Next Image and Copy')
+        self.action_next_image_and_copy = QAction('Next Image and Copy', self)
         self.action_next_image_and_copy.setIcon(read_icon('next'))
         self.action_next_image_and_copy.setShortcut('t')
         self.action_next_image_and_copy.triggered.connect(self.next_image_and_copy)
-        self.action_next_image_and_delete = new_action(
-            self, 'Next Image and Delete')
+        self.action_next_image_and_delete = QAction('Next Image and Delete', self)
         self.action_next_image_and_delete.setIcon(read_icon('next'))
         self.action_next_image_and_delete.setShortcut('v')
         self.action_next_image_and_delete.triggered.connect(self.next_image_and_delete)
-        self.action_show_info = new_action(
-            self, 'info')
+        self.action_show_info = QAction('info', self)
         self.action_show_info.setIcon(read_icon('help'))
         self.action_show_info.triggered.connect(self.show_info_dialog)
         self.zoom_widget = ZoomWidget()
@@ -134,29 +122,24 @@ class MainWindow(QMainWindow):
         self.zoom_widget.valueChanged.connect(self.paint_canvas)
         self.action_zoom = QWidgetAction(self)
         self.action_zoom.setDefaultWidget(self.zoom_widget)
-        self.action_zoom_in = new_action(
-            self, 'Zoom In')
+        self.action_zoom_in = QAction('Zoom In', self)
         self.action_zoom_in.setIcon(read_icon('zoom-in'))
         self.action_zoom_in.setShortcut('Ctrl++')
         self.action_zoom_in.triggered.connect(partial(self.add_zoom, 10))
-        self.action_zoom_out = new_action(
-            self, 'Zoom Out')
+        self.action_zoom_out = QAction('Zoom Out', self)
         self.action_zoom_out.setIcon(read_icon('zoom-out'))
         self.action_zoom_out.setShortcut('Ctrl+-')
         self.action_zoom_out.triggered.connect(partial(self.add_zoom, -10))
-        self.action_zoom_org = new_action(
-            self, 'Original Size')
+        self.action_zoom_org = QAction('Original Size', self)
         self.action_zoom_org.setIcon(read_icon('zoom'))
         self.action_zoom_org.setShortcut('Ctrl+=')
         self.action_zoom_org.triggered.connect(partial(self.set_zoom, 100))
-        self.action_fit_window = new_action(
-            self, 'Fit Window')
+        self.action_fit_window = QAction('Fit Window', self)
         self.action_fit_window.setIcon(read_icon('fit-window'))
         self.action_fit_window.setShortcut('Ctrl+F')
         self.action_fit_window.triggered.connect(self.set_fit_window)
         self.action_fit_window.setCheckable(True)
-        self.action_fit_width = new_action(
-            self, 'Fit Width')
+        self.action_fit_width = QAction('Fit Width', self)
         self.action_fit_width.setIcon(read_icon('fit-width'))
         self.action_fit_width.setShortcut('Ctrl+Shift+F')
         self.action_fit_width.triggered.connect(self.set_fit_width)
