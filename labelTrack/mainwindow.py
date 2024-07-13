@@ -112,11 +112,18 @@ class MainWindow(QMainWindow):
         self.auto_saving_action = QAction('autoSaveMode', self)
         self.auto_saving_action.setCheckable(True)
         self.auto_saving_action.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
-        self.zoom_widget = ZoomWidget()
-        self.zoom_widget.setEnabled(True)
-        self.zoom_widget.valueChanged.connect(self.paint_canvas)
+        self.zoom_spinbox = QSpinBox()
+        self.zoom_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.zoom_spinbox.setRange(1, 500)
+        self.zoom_spinbox.setSuffix(' %')
+        self.zoom_spinbox.setValue(100)
+        self.zoom_spinbox.setToolTip(u'Zoom Level')
+        self.zoom_spinbox.setStatusTip(self.toolTip())
+        self.zoom_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.zoom_spinbox.setEnabled(True)
+        self.zoom_spinbox.valueChanged.connect(self.paint_canvas)
         self.zoom_action = QWidgetAction(self)
-        self.zoom_action.setDefaultWidget(self.zoom_widget)
+        self.zoom_action.setDefaultWidget(self.zoom_spinbox)
         self.zoom_in_action = QAction('Zoom In', self)
         self.zoom_in_action.setIcon(read_icon('zoom-in'))
         self.zoom_in_action.setShortcut('Ctrl++')
@@ -348,10 +355,10 @@ class MainWindow(QMainWindow):
     def set_zoom(self, value):
         self.fit_window_action.setChecked(False)
         self.zoom_mode = self.MANUAL_ZOOM
-        self.zoom_widget.setValue(int(value))
+        self.zoom_spinbox.setValue(int(value))
 
     def add_zoom(self, increment=10):
-        self.set_zoom(self.zoom_widget.value() + increment)
+        self.set_zoom(self.zoom_spinbox.value() + increment)
 
     def __zoom_request(self, delta):
         h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
@@ -387,25 +394,23 @@ class MainWindow(QMainWindow):
     def paint_canvas(self):
         if self.image.isNull():
             return
-        self.canvas.scale = 0.01 * self.zoom_widget.value()
+        self.canvas.scale = 0.01 * self.zoom_spinbox.value()
         self.canvas.adjustSize()
         self.canvas.update()
 
     def adjust_scale(self, initial=False):
         value = self.scalers[self.FIT_WINDOW if initial else self.zoom_mode]()
-        self.zoom_widget.setValue(int(100 * value))
+        self.zoom_spinbox.setValue(int(100 * value))
 
     def scale_fit_window(self):
-        """Figure out the size of the pixmap in order to fit the main widget."""
-        e = 2.0  # So that no scrollbars are generated.
+        e = 2.0  # so that no scrollbars are generated.
         w1 = self.centralWidget().width() - e
         h1 = self.centralWidget().height() - e
         a1 = w1 / h1
-        # Calculate a new scale value based on the pixmap's aspect ratio.
         w2 = self.canvas.pixmap.width() - 0.0
         h2 = self.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
-        return w1 / w2 if a2 >= a1 else h1 / h2
+        return w1 / w2 if a1 <= a2 else h1 / h2
 
     def may_continue(self):
         if not self.dirty:
@@ -550,19 +555,6 @@ class ToolButton(QToolButton):
         w2, h2 = self.minSize
         ToolButton.minSize = max(w1, w2), max(h1, h2)
         return QSize(*ToolButton.minSize)
-
-
-class ZoomWidget(QSpinBox):
-
-    def __init__(self, value=100):
-        super(ZoomWidget, self).__init__()
-        self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
-        self.setRange(1, 500)
-        self.setSuffix(' %')
-        self.setValue(value)
-        self.setToolTip(u'Zoom Level')
-        self.setStatusTip(self.toolTip())
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
 
 class Canvas(QWidget):
