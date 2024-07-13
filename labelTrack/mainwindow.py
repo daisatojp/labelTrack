@@ -56,7 +56,6 @@ class MainWindow(QMainWindow):
         self.canvas.scrollRequest.connect(self.scroll_request)
 
         self.canvas.newShape.connect(self.new_shape)
-        self.canvas.shapeMoved.connect(self.set_dirty)
         self.canvas.drawingPolygon.connect(self.toggle_drawing_sensitive)
 
         self.setCentralWidget(scroll)
@@ -228,10 +227,6 @@ class MainWindow(QMainWindow):
         self.canvas.set_editing(True)
         self.create_object_action.setEnabled(True)
         self.set_dirty()
-
-    def toggle_polygons(self, value):
-        for item, shape in self.items_to_shapes.items():
-            item.setCheckState(Qt.CheckState.Checked if value else Qt.CheckState.Unchecked)
 
     def load_image_dir(self):
         if not self.may_continue() or self.image_dir is None:
@@ -543,12 +538,11 @@ class Canvas(QWidget):
     scrollRequest = pyqtSignal(int, object)
     newShape = pyqtSignal()
     selectionChanged = pyqtSignal(bool)
-    shapeMoved = pyqtSignal()
     drawingPolygon = pyqtSignal(bool)
 
     epsilon = 11.0
 
-    def __init__(self, parent):
+    def __init__(self, parent: MainWindow) -> None:
         super(Canvas, self).__init__(parent)
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
@@ -569,7 +563,6 @@ class Canvas(QWidget):
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
 
-        # initialisation for panning
         self.pan_initial_pos = QPoint()
 
     def enterEvent(self, event: QEnterEvent) -> None:
@@ -612,7 +605,7 @@ class Canvas(QWidget):
                 # Display annotation width and height while drawing
                 current_width = abs(self.current[0].x() - pos.x())
                 current_height = abs(self.current[0].y() - pos.y())
-                self.parent().window().label_coordinates.setText(
+                self.p.label_coordinates.setText(
                     f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
                 color = self.drawing_line_color
                 if self.out_of_pixmap(pos):
@@ -643,7 +636,7 @@ class Canvas(QWidget):
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
-                self.shapeMoved.emit()
+                self.p.set_dirty()
                 self.repaint()
                 # Display annotation width and height while moving vertex
                 point1 = self.h_shape[1]
@@ -655,7 +648,7 @@ class Canvas(QWidget):
             elif self.selected_shape and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
                 self.bounded_move_shape(self.selected_shape, pos)
-                self.shapeMoved.emit()
+                self.p.set_dirty()
                 self.repaint()
                 # Display annotation width and height while moving shape
                 point1 = self.selected_shape[1]
@@ -974,7 +967,7 @@ class Canvas(QWidget):
             self.selected_shape.points[1] += QPointF(0, 1.0)
             self.selected_shape.points[2] += QPointF(0, 1.0)
             self.selected_shape.points[3] += QPointF(0, 1.0)
-        self.shapeMoved.emit()
+        self.p.set_dirty()
         self.repaint()
 
     def move_out_of_bound(self, step):
