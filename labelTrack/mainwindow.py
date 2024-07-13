@@ -936,12 +936,8 @@ class Canvas(QWidget):
             self.current = Shape()
             self.current.add_point(pos)
             self.line.points = [pos, pos]
-            self.set_hiding()
             self.drawingPolygon.emit(True)
             self.update()
-
-    def set_hiding(self, enable=True):
-        self._hide_background = self.hide_background if enable else False
 
     def can_close_shape(self):
         return self.drawing() and self.current and len(self.current) > 2
@@ -950,7 +946,6 @@ class Canvas(QWidget):
         self.de_select_shape()
         shape.selected = True
         self.selected_shape = shape
-        self.set_hiding()
         # self.selectionChanged.emit(True)
         self.update()
 
@@ -1024,7 +1019,6 @@ class Canvas(QWidget):
         if self.selected_shape:
             self.selected_shape.selected = False
             self.selected_shape = None
-            self.set_hiding(False)
             self.selectionChanged.emit(False)
             self.update()
 
@@ -1056,7 +1050,6 @@ class Canvas(QWidget):
         self.current.close()
         self.shape = self.current
         self.current = None
-        self.set_hiding(False)
         self.newShape.emit()
         self.update()
 
