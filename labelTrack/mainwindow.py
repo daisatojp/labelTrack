@@ -425,7 +425,6 @@ class MainWindow(QMainWindow):
         if self.image.isNull():
             return
         self.canvas.scale = 0.01 * self.zoom_widget.value()
-        self.canvas.label_font_size = int(0.02 * max(self.image.width(), self.image.height()))
         self.canvas.adjustSize()
         self.canvas.update()
 
@@ -634,7 +633,6 @@ class Canvas(QWidget):
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
-        self.label_font_size = 8
         self.pixmap = QPixmap()
         self.visible = {}
         self._hide_background = False
@@ -832,7 +830,6 @@ class Canvas(QWidget):
 
         p.drawPixmap(0, 0, self.pixmap)
         Shape.scale = self.scale
-        Shape.label_font_size = self.label_font_size
         if self.shape is not None:
             self.shape.paint(p)
         if self.current:

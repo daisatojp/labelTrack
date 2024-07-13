@@ -27,7 +27,6 @@ class Shape:
     point_type = P_ROUND
     point_size = 8
     scale = 1.0
-    label_font_size = 8
 
     def __init__(self):
         self.points = []
