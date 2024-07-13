@@ -615,14 +615,12 @@ class Canvas(QWidget):
     shapeMoved = pyqtSignal()
     drawingPolygon = pyqtSignal(bool)
 
-    CREATE, EDIT = list(range(2))
-
     epsilon = 11.0
 
     def __init__(self, parent):
         super(Canvas, self).__init__(parent)
         self.p = parent
-        self.mode = self.EDIT
+        self.mode = CANVAS_EDIT_MODE
         self.shape = None
         self.current = None
         self.selected_shape = None
@@ -679,7 +677,7 @@ class Canvas(QWidget):
         self.p.label_coordinates.setText(
             f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
         # Polygon drawing.
-        if self.drawing():
+        if self.mode == CANVAS_CREATE_MODE:
             self.override_cursor(CURSOR_DRAW)
             if self.current:
                 # Display annotation width and height while drawing
@@ -788,7 +786,7 @@ class Canvas(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = self.transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.drawing():
+            if self.mode == CANVAS_EDIT_MODE:
                 self.handle_drawing(pos)
             else:
                 selection = self.select_shape_point(pos)
@@ -806,10 +804,9 @@ class Canvas(QWidget):
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
             pos = self.transform_pos(event.pos())
-            if self.drawing():
+            if self.mode == CANVAS_EDIT_MODE:
                 self.handle_drawing(pos)
             else:
-                # pan
                 QApplication.restoreOverrideCursor()
 
     def paintEvent(self, event: QPaintEvent) -> None:
@@ -843,7 +840,9 @@ class Canvas(QWidget):
             p.setBrush(brush)
             p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
 
-        if self.drawing() and not self.prev_point.isNull() and not self.out_of_pixmap(self.prev_point):
+        if (self.mode == CANVAS_EDIT_MODE) and \
+           (not self.prev_point.isNull()) and \
+           (not self.out_of_pixmap(self.prev_point)):
             p.setPen(QColor(0, 0, 0))
             p.drawLine(int(self.prev_point.x()), 0, int(self.prev_point.x()), int(self.pixmap.height()))
             p.drawLine(0, int(self.prev_point.y()), int(self.pixmap.width()), int(self.prev_point.y()))
@@ -878,14 +877,8 @@ class Canvas(QWidget):
         self.drawing_line_color = qcolor
         self.drawing_rect_color = qcolor
 
-    def drawing(self):
-        return self.mode == self.CREATE
-
-    def editing(self):
-        return self.mode == self.EDIT
-
     def set_editing(self, value=True):
-        self.mode = self.EDIT if value else self.CREATE
+        self.mode = CANVAS_EDIT_MODE if value else CANVAS_CREATE_MODE
         if not value:  # Create
             self.un_highlight()
             self.de_select_shape()

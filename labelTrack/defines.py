@@ -6,3 +6,6 @@ SETTINGS_KEY_WINDOW_Y: tuple[str] = ('window', 'y')
 SETTINGS_KEY_WINDOW_W: tuple[str] = ('window', 'w')
 SETTINGS_KEY_WINDOW_H: tuple[str] = ('window', 'h')
 SETTINGS_KEY_AUTO_SAVE: tuple[str] = ('auto_save',)
+
+CANVAS_CREATE_MODE: int = 1
+CANVAS_EDIT_MODE: int = 2
