@@ -1,5 +1,6 @@
 from functools import partial
 import os.path as osp
+from typing import Optional
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from PyQt6.QtWidgets import *
@@ -546,6 +547,11 @@ class Canvas(QWidget):
         super(Canvas, self).__init__(parent)
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
+        self._mx: Optional[float] = None
+        self._my: Optional[float] = None
+        self._bbox_sx: Optional[float] = None
+        self._bbox_sy: Optional[float] = None
+
         self.shape = None
         self.current = None
         self.selected_shape = None
@@ -597,21 +603,23 @@ class Canvas(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pos = self.__transform_pos(event.pos())
-        self.p.status_label.setText(f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
+        mx = pos.x()
+        my = pos.y()
+        mx_pre = self._mx
+        my_pre = self._my
+        self._mx = mx
+        self._my = my
+
+        self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
 
         if self.mode == CANVAS_CREATE_MODE:
             self.override_cursor(CURSOR_DRAW)
             if self.current:
-                # Display annotation width and height while drawing
-                current_width = abs(self.current[0].x() - pos.x())
-                current_height = abs(self.current[0].y() - pos.y())
-                self.p.status_label.setText(
-                    f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
+                w = abs(self._bbox_sx - mx)
+                h = abs(self._bbox_sy - my)
+                self.p.status_label.setText(f'W: {w:.2f}, H: {h:.2f} / X: {mx:.2f}; Y: {my:.2f}')
                 color = self.drawing_line_color
                 if self.out_of_pixmap(pos):
-                    # Don't allow the user to draw outside the pixmap.
-                    # Clip the coordinates to 0 or max,
-                    # if they are outside the range [0, max]
                     size = self.pixmap.size()
                     clipped_x = min(max(0, pos.x()), size.width())
                     clipped_y = min(max(0, pos.y()), size.height())
@@ -643,8 +651,7 @@ class Canvas(QWidget):
                 point3 = self.h_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().status_label.setText(
-                    f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
+                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {mx:.2f}; Y: {my:.2f}')
             elif self.selected_shape and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
                 self.bounded_move_shape(self.selected_shape, pos)
@@ -655,10 +662,8 @@ class Canvas(QWidget):
                 point3 = self.selected_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().status_label.setText(
-                    f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
+                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {mx:.2f}; Y: {my:.2f}')
             else:
-                # pan
                 delta_x = pos.x() - self.pan_initial_pos.x()
                 delta_y = pos.y() - self.pan_initial_pos.y()
                 self.scrollRequest.emit(delta_x, Qt.Orientation.Horizontal)
@@ -696,8 +701,7 @@ class Canvas(QWidget):
                 point3 = self.h_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().status_label.setText(
-                    f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
+                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {pos.x():.2f}; Y: {pos.y():.2f}')
         else:  # Nothing found, clear highlights, reset state.
             if self.h_shape:
                 self.h_shape.highlight_clear()
@@ -709,8 +713,10 @@ class Canvas(QWidget):
         pos = self.__transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_CREATE_MODE:
+                self._bbox_sx = pos.x()
+                self._bbox_sy = pos.y()
                 self.handle_drawing(pos)
-            else:
+            if self.mode == CANVAS_EDIT_MODE:
                 selection = self.select_shape_point(pos)
                 self.prev_point = pos
                 if selection is None:
