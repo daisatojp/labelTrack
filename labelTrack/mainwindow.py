@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from functools import partial
 import os.path as osp
 from typing import Optional
@@ -21,15 +22,49 @@ CURSOR_MOVE = Qt.CursorShape.ClosedHandCursor
 CURSOR_GRAB = Qt.CursorShape.OpenHandCursor
 
 
+@dataclass
+class BBox:
+    x: Optional[float] = None
+    y: Optional[float] = None
+    w: Optional[float] = None
+    h: Optional[float] = None
+
+    def empty(self) -> bool:
+        return (self.x is None) or \
+               (self.y is None) or \
+               (self.w is None) or \
+               (self.h is None)
+
+    def xmin(self) -> float:
+        return self.x
+    
+    def ymin(self) -> float:
+        return self.y
+    
+    def xmax(self) -> float:
+        return self.x + self.w
+    
+    def ymax(self) -> float:
+        return self.y + self.h
+
+    def __str__(self) -> str:
+        if self.empty():
+            return '-1.00,-1.00,-1.00,-1.00'
+        return f'{self.x:.2f},{self.y:.2f},{self.w:.2f},{self.h:.2f}'
+
+
 class MainWindow(QMainWindow):
 
-    def __init__(self, image_dir, label_path):
+    def __init__(self,
+                 image_dir: Optional[str] = None,
+                 label_file: Optional[str] = None
+                 ) -> None:
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
 
-        self.image_dir = image_dir
-        self.label_path = label_path
-        self.bbox_list = []
+        self._image_dir: Optional[str] = None
+        self._label_file: Optional[str] = None
+        self._bboxes: list[BBox] = []
         self.dirty = False
 
         self.img_list_widget = QListWidget()
@@ -84,7 +119,7 @@ class MainWindow(QMainWindow):
         self.save_action = QAction('Save', self)
         self.save_action.setIcon(read_icon('save'))
         self.save_action.setShortcut('Ctrl+s')
-        self.save_action.triggered.connect(self.save_file)
+        self.save_action.triggered.connect(self.__save_label_file)
         self.create_object_action = QAction('Create Object', self)
         self.create_object_action.setIcon(read_icon('objects'))
         self.create_object_action.setShortcut('w')
@@ -191,8 +226,8 @@ class MainWindow(QMainWindow):
         self.resize(size)
         self.move(position)
 
-        self.load_label()
-        self.load_image_dir()
+        self.__load_image_dir(image_dir)
+        self.__load_label_file(label_file)
 
         self.status_label = QLabel('')
         self.statusBar().addPermanentWidget(self.status_label)
@@ -200,8 +235,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self.may_continue():
             event.ignore()
-        settings.set(SETTINGS_KEY_IMAGE_DIR, self.image_dir if self.image_dir is not None else '.')
-        settings.set(SETTINGS_KEY_LABEL_PATH, self.label_path if self.label_path is not None else '.')
+        settings.set(SETTINGS_KEY_IMAGE_DIR, self._image_dir if self._image_dir is not None else '.')
+        settings.set(SETTINGS_KEY_LABEL_PATH, self._label_file if self._label_file is not None else '.')
         settings.set(SETTINGS_KEY_WINDOW_X, self.pos().x())
         settings.set(SETTINGS_KEY_WINDOW_Y, self.pos().y())
         settings.set(SETTINGS_KEY_WINDOW_W, self.size().width())
@@ -221,7 +256,7 @@ class MainWindow(QMainWindow):
             self.canvas.restore_cursor()
 
     def file_current_item_changed(self, item=None):
-        self.load_image()
+        self.__load_image()
 
     def new_shape(self):
         self.update_bbox_list_by_canvas()
@@ -229,77 +264,51 @@ class MainWindow(QMainWindow):
         self.create_object_action.setEnabled(True)
         self.set_dirty()
 
-    def load_image_dir(self):
-        if not self.may_continue() or self.image_dir is None:
-            return
-        self.img_list_widget.clear()
-        img_paths = scan_all_images(self.image_dir)
-        for img_path in img_paths:
-            item = QListWidgetItem(osp.basename(img_path))
-            self.img_list_widget.addItem(item)
-        self.img_list_widget.setCurrentRow(0)
-        self.load_image()
-
-    def open_image_dir_dialog(self, _value=False):
+    def open_image_dir_dialog(self):
         if not self.may_continue():
             return
         default_image_dir = '.'
-        if self.image_dir and osp.exists(self.image_dir):
-            default_image_dir = self.image_dir
+        if self._image_dir and osp.exists(self._image_dir):
+            default_image_dir = self._image_dir
         target_image_dir = QFileDialog.getExistingDirectory(
             self, f'{__appname__} - Open Image Directory', default_image_dir,
             QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
-        self.image_dir = target_image_dir
-        self.load_image_dir()
+        self.__load_image_dir(target_image_dir)
 
-    def open_label_file_dialog(self, _value=False):
+    def open_label_file_dialog(self):
         default_label_path = '.'
-        if self.label_path is not None:
-            default_label_path = self.label_path
+        if self._label_file is not None:
+            default_label_path = self._label_file
         target_file_path = QFileDialog.getSaveFileName(
             self, f'{__appname__} - Save label to the file',
             osp.dirname(default_label_path), 'Text (*.txt)',
             None, QFileDialog.Option.DontConfirmOverwrite)
         if target_file_path is not None and len(target_file_path) > 1:
-            self.label_path = target_file_path[0]
-            self.load_label()
-        self.statusBar().showMessage(f'Label will be saved to {self.label_path}.')
+            self.__load_label_file(target_file_path[0])
+        self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
         self.statusBar().show()
 
-    def open_prev_image(self, _value=False):
+    def open_prev_image(self):
         cnt = self.img_list_widget.count()
         idx = self.img_list_widget.currentRow()
         if self.auto_saving_action.isChecked():
-            self.save_file()
+            self.__save_label_file()
         if cnt <= 0:
             return
         if 0 <= idx - 1:
             idx -= 1
             self.img_list_widget.setCurrentRow(idx)
-        self.load_image()
+        self.__load_image()
 
-    def open_next_image(self, _value=False):
+    def open_next_image(self):
         cnt = self.img_list_widget.count()
         idx = self.img_list_widget.currentRow()
         if self.auto_saving_action.isChecked():
-            self.save_file()
+            self.__save_label_file()
         if idx + 1 < cnt:
             idx += 1
             self.img_list_widget.setCurrentRow(idx)
-        self.load_image()
-
-    def save_file(self, _value=False):
-        if self.label_path is None:
-            return
-        if self.dirty is False:
-            return
-        with open(self.label_path, 'w') as f:
-            for box in self.bbox_list:
-                f.write(box)
-        self.set_clean()
-        self.statusBar().showMessage(f'Saved to {self.label_path}')
-        self.statusBar().show()
-        self.dirty = False
+        self.__load_image()
 
     def create_object(self):
         if self.image.isNull():
@@ -313,11 +322,9 @@ class MainWindow(QMainWindow):
         self.canvas.update()
 
     def copy_object(self):
-        if self.img_list_widget is None:
-            return
         idx = self.img_list_widget.currentRow()
         if 0 < idx:
-            self.bbox_list[idx] = self.bbox_list[idx - 1]
+            self._bboxes[idx] = self._bboxes[idx - 1]
             self.update_shape()
 
     def next_image_and_copy(self):
@@ -355,18 +362,55 @@ class MainWindow(QMainWindow):
             if discard_changes == QMB.No:
                 return True
             elif discard_changes == QMB.Yes:
-                self.save_file()
+                self.__save_label_file()
                 return True
             else:
                 return False
 
-    def load_image(self):
+    def update_shape(self):
+        idx = self.img_list_widget.currentRow()
+        bbox = self._bboxes[idx]
+        if not bbox.empty():
+            shape = Shape()
+            shape.add_point(QPointF(bbox.xmin(), bbox.ymin()))
+            shape.add_point(QPointF(bbox.xmax(), bbox.ymin()))
+            shape.add_point(QPointF(bbox.xmax(), bbox.ymax()))
+            shape.add_point(QPointF(bbox.xmin(), bbox.ymax()))
+            shape.close()
+            shape.line_color = QColor(227, 79, 208, 100)
+            shape.fill_color = QColor(227, 79, 208, 100)
+            self.canvas.load_shape(shape)
+        else:
+            self.canvas.load_shape(None)
+
+    def update_bbox_list_by_canvas(self):
+        idx = self.img_list_widget.currentRow()
+        s = self.canvas.shape
+        if s is not None:
+            pts = [(p.x(), p.y()) for p in s.points]
+            x1, y1, x2, y2 = pts[0][0], pts[0][1], pts[2][0], pts[2][1]
+            xmin, ymin, xmax, ymax = min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)
+            x, y, w, h = xmin, ymin, xmax - xmin, ymax - ymin
+            self._bboxes[idx] = BBox(x=x, y=y, w=w, h=h)
+        else:
+            self._bboxes[idx] = BBox()
+        self.set_dirty()
+
+    def set_dirty(self):
+        self.dirty = True
+        self.save_action.setEnabled(True)
+
+    def set_clean(self):
+        self.dirty = False
+        self.save_action.setEnabled(False)
+
+    def __load_image(self) -> None:
         item = self.img_list_widget.currentItem()
         if item is None:
             return
         self.canvas.reset_state()
         self.canvas.setEnabled(False)
-        file_path = osp.join(self.image_dir, item.text())
+        file_path = osp.join(self._image_dir, item.text())
         reader = QImageReader(file_path)
         reader.setAutoTransform(True)
         img = reader.read()
@@ -392,70 +436,46 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f'{__appname__} {file_path} {counter}')
         self.canvas.setFocus()
 
-    def load_label(self):
-        if self.label_path is None:
+    def __load_image_dir(self, image_dir: Optional[str]) -> None:
+        if not self.may_continue():
             return
-        if not osp.exists(self.label_path):
-            with open(self.label_path, 'w') as f:
-                pass
-            self.bbox_list = []
+        self._image_dir = image_dir
+        self._label_file = None
+        self._bboxes.clear()
+        if image_dir is None:
             return
-        with open(self.label_path) as f:
-            self.bbox_list = f.readlines()
+        img_files = scan_all_images(image_dir)
+        self._bboxes = [BBox() for _ in range(len(img_files))]
+        self.img_list_widget.clear()
+        for img_file in img_files:
+            item = QListWidgetItem(osp.basename(img_file))
+            self.img_list_widget.addItem(item)
+        self.img_list_widget.setCurrentRow(0)
+        self.__load_image()
 
-    def update_shape(self):
-        idx = self.img_list_widget.currentRow()
-        x, y, w, h = self.read_bbox_list(idx)
-        xmin, ymin, xmax, ymax = x, y, x + w, y + h
-        if 0.0 < w and 0.0 < h:
-            shape = Shape()
-            shape.add_point(QPointF(xmin, ymin))
-            shape.add_point(QPointF(xmax, ymin))
-            shape.add_point(QPointF(xmax, ymax))
-            shape.add_point(QPointF(xmin, ymax))
-            shape.close()
-            shape.line_color = QColor(227, 79, 208, 100)
-            shape.fill_color = QColor(227, 79, 208, 100)
-            self.canvas.load_shape(shape)
-        else:
-            self.canvas.load_shape(None)
-
-    def read_bbox_list(self, idx):
-        while len(self.bbox_list) <= idx:
-            self.bbox_list.append(f'-1.00,-1.00,-1.00,-1.00\n')
-        r = self.bbox_list[idx].split(',')
-        x, y, w, h = float(r[0]), float(r[1]), float(r[2]), float(r[3])
-        return x, y, w, h
-
-    def update_bbox_list(self, idx, x, y, h, w):
-        if self.bbox_list is None:
+    def __load_label_file(self, label_file: Optional[str]) -> None:
+        self._label_file = label_file
+        self._bboxes = [BBox() for _ in range(len(self._bboxes))]
+        if label_file is None:
             return
-        while len(self.bbox_list) <= idx:
-            self.bbox_list.append(f'-1.00,-1.00,-1.00,-1.00\n')
-        self.bbox_list[idx] = f'{x:0.2f},{y:0.2f},{w:0.2f},{h:0.2f}\n'
+        with open(label_file, 'r') as f:
+            for idx, line in enumerate(f.readlines()):
+                s = line.split(',')
+                self._bboxes[idx] = BBox(
+                    x=float(s[0]), y=float(s[1]), w=float(s[2]), h=float(s[3]))
 
-    def update_bbox_list_by_canvas(self):
-        idx = self.img_list_widget.currentRow()
-        if self.bbox_list is None:
+    def __save_label_file(self) -> None:
+        if self._label_file is None:
             return
-        s = self.canvas.shape
-        if s is not None:
-            pts = [(p.x(), p.y()) for p in s.points]
-            x1, y1, x2, y2 = pts[0][0], pts[0][1], pts[2][0], pts[2][1]
-            xmin, ymin, xmax, ymax = min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)
-            x, y, w, h = xmin, ymin, xmax - xmin, ymax - ymin
-            self.update_bbox_list(idx, x, y, h, w)
-        else:
-            self.update_bbox_list(idx, -1.0, -1.0, -1.0, -1.0)
-        self.set_dirty()
-
-    def set_dirty(self):
-        self.dirty = True
-        self.save_action.setEnabled(True)
-
-    def set_clean(self):
+        if self.dirty is False:
+            return
+        with open(self._label_file, 'w') as f:
+            for bbox in self._bboxes:
+                f.write(str(bbox) + '\n')
+        self.set_clean()
+        self.statusBar().showMessage(f'Saved to {self._label_file}')
+        self.statusBar().show()
         self.dirty = False
-        self.save_action.setEnabled(False)
 
     def __reset_zoom(self) -> None:
         self.zoom_spinbox.setValue(100)
