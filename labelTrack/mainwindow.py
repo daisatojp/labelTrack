@@ -90,8 +90,6 @@ class MainWindow(QMainWindow):
             Qt.Orientation.Horizontal: scroll.horizontalScrollBar()}
         self.scroll_area = scroll
         self.canvas.scrollRequest.connect(self.scroll_request)
-
-        self.canvas.newShape.connect(self.new_shape)
         self.canvas.drawingPolygon.connect(self.toggle_drawing_sensitive)
 
         self.setCentralWidget(scroll)
@@ -215,7 +213,6 @@ class MainWindow(QMainWindow):
         self.statusBar().show()
         self.image = QImage()
         self.zoom_level = 100
-        self.fit_window = False
 
         window_x = settings.get(SETTINGS_KEY_WINDOW_X, 0)
         window_y = settings.get(SETTINGS_KEY_WINDOW_Y, 0)
@@ -257,12 +254,6 @@ class MainWindow(QMainWindow):
 
     def file_current_item_changed(self, item=None):
         self.__load_image()
-
-    def new_shape(self):
-        self.update_bbox_list_by_canvas()
-        self.canvas.set_editing(True)
-        self.create_object_action.setEnabled(True)
-        self.set_dirty()
 
     def open_image_dir_dialog(self):
         if not self.may_continue():
@@ -557,7 +548,6 @@ class ToolButton(QToolButton):
 class Canvas(QWidget):
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, object)
-    newShape = pyqtSignal()
     selectionChanged = pyqtSignal(bool)
     drawingPolygon = pyqtSignal(bool)
 
@@ -958,7 +948,10 @@ class Canvas(QWidget):
         self.current.close()
         self.shape = self.current
         self.current = None
-        self.newShape.emit()
+        self.p.update_bbox_list_by_canvas()
+        self.set_editing(True)
+        self.p.create_object_action.setEnabled(True)
+        self.p.set_dirty()
         self.update()
 
     def close_enough(self, p1, p2):
