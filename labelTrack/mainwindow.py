@@ -44,7 +44,7 @@ class MainWindow(QMainWindow):
         self.file_dock.setWidget(file_list_container)
 
         self.canvas = Canvas(parent=self)
-        self.canvas.zoomRequest.connect(self.zoom_request)
+        self.canvas.zoomRequest.connect(self.__zoom_request)
         self.canvas.set_drawing_color(DEFAULT_LINE_COLOR)
 
         scroll = QScrollArea()
@@ -133,16 +133,9 @@ class MainWindow(QMainWindow):
         self.fit_window_action.setIcon(read_icon('fit-window'))
         self.fit_window_action.setShortcut('Ctrl+F')
         self.fit_window_action.triggered.connect(self.set_fit_window)
-        self.fit_window_action.setCheckable(True)
-        self.fit_width_action = QAction('Fit Width', self)
-        self.fit_width_action.setIcon(read_icon('fit-width'))
-        self.fit_width_action.setShortcut('Ctrl+Shift+F')
-        self.fit_width_action.triggered.connect(self.set_fit_width)
-        self.fit_width_action.setCheckable(True)
         self.zoom_mode = self.MANUAL_ZOOM
         self.scalers = {
             self.FIT_WINDOW: self.scale_fit_window,
-            self.FIT_WIDTH: self.scale_fit_width,
             self.MANUAL_ZOOM: lambda: 1}
         self.menus_file = self.menuBar().addMenu('File')
         self.menus_edit = self.menuBar().addMenu('Edit')
@@ -166,7 +159,6 @@ class MainWindow(QMainWindow):
         self.menus_view.addAction(self.zoom_org_action)
         self.menus_view.addSeparator()
         self.menus_view.addAction(self.fit_window_action)
-        self.menus_view.addAction(self.fit_width_action)
         self.menus_help.addAction(self.show_info_action)
         self.toolbar = ToolBar('Tools')
         self.toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
@@ -184,7 +176,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.zoom_action)
         self.toolbar.addAction(self.zoom_out_action)
         self.toolbar.addAction(self.fit_window_action)
-        self.toolbar.addAction(self.fit_width_action)
         self.statusBar().showMessage(f'{__appname__} started.')
         self.statusBar().show()
         self.image = QImage()
@@ -355,7 +346,6 @@ class MainWindow(QMainWindow):
         bar.setValue(int(bar.value() + bar.singleStep() * units))
 
     def set_zoom(self, value):
-        self.fit_width_action.setChecked(False)
         self.fit_window_action.setChecked(False)
         self.zoom_mode = self.MANUAL_ZOOM
         self.zoom_widget.setValue(int(value))
@@ -363,19 +353,11 @@ class MainWindow(QMainWindow):
     def add_zoom(self, increment=10):
         self.set_zoom(self.zoom_widget.value() + increment)
 
-    def zoom_request(self, delta):
-        # get the current scrollbar positions
-        # calculate the percentages ~ coordinates
+    def __zoom_request(self, delta):
         h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
         v_bar = self.scroll_bars[Qt.Orientation.Vertical]
-        # get the current maximum, to know the difference after zooming
         h_bar_max = h_bar.maximum()
         v_bar_max = v_bar.maximum()
-        # get the cursor position and canvas size
-        # calculate the desired movement from 0 to 1
-        # where 0 = move left
-        #       1 = move right
-        # up and down analogous
         cursor = QCursor()
         pos = cursor.pos()
         relative_pos = QWidget.mapFromGlobal(self, pos)
@@ -383,42 +365,23 @@ class MainWindow(QMainWindow):
         cursor_y = relative_pos.y()
         w = self.scroll_area.width()
         h = self.scroll_area.height()
-        # the scaling from 0 to 1 has some padding
-        # you don't have to hit the very leftmost pixel for a maximum-left movement
         margin = 0.1
         move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
         move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
-        # clamp the values from 0 to 1
         move_x = min(max(move_x, 0), 1)
         move_y = min(max(move_y, 0), 1)
-        # zoom in
         units = delta // (8 * 15)
         scale = 10
         self.add_zoom(scale * units)
-        # get the difference in scrollbar values
-        # this is how far we can move
         d_h_bar_max = h_bar.maximum() - h_bar_max
         d_v_bar_max = v_bar.maximum() - v_bar_max
-        # get the new scrollbar values
         new_h_bar_value = int(h_bar.value() + move_x * d_h_bar_max)
         new_v_bar_value = int(v_bar.value() + move_y * d_v_bar_max)
         h_bar.setValue(new_h_bar_value)
         v_bar.setValue(new_v_bar_value)
 
     def set_fit_window(self, value=True):
-        if self.image.isNull():
-            self.fit_window_action.setChecked(False)
-            return
-        self.fit_width_action.setChecked(False)
         self.zoom_mode = self.FIT_WINDOW
-        self.adjust_scale()
-
-    def set_fit_width(self, value=True):
-        if self.image.isNull():
-            self.fit_width_action.setChecked(False)
-            return
-        self.fit_window_action.setChecked(False)
-        self.zoom_mode = self.FIT_WIDTH
         self.adjust_scale()
 
     def paint_canvas(self):
@@ -443,11 +406,6 @@ class MainWindow(QMainWindow):
         h2 = self.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a2 >= a1 else h1 / h2
-
-    def scale_fit_width(self):
-        # The epsilon does not seem to work too well here.
-        w = self.centralWidget().width() - 2.0
-        return w / self.canvas.pixmap.width()
 
     def may_continue(self):
         if not self.dirty:
@@ -672,11 +630,9 @@ class Canvas(QWidget):
         pass
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        """Update line with last point and current coordinates."""
         pos = self.__transform_pos(event.pos())
-        self.p.label_coordinates.setText(
-            f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
-        # Polygon drawing.
+        self.p.label_coordinates.setText(f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
+
         if self.mode == CANVAS_CREATE_MODE:
             self.override_cursor(CURSOR_DRAW)
             if self.current:
