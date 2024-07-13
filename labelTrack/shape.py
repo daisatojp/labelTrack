@@ -1,4 +1,3 @@
-import sys
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from labelTrack.utils import distance
@@ -12,7 +11,7 @@ DEFAULT_VERTEX_FILL_COLOR = QColor(0, 255, 0, 255)
 DEFAULT_HVERTEX_FILL_COLOR = QColor(255, 0, 0)
 
 
-class Shape(object):
+class Shape:
     P_SQUARE, P_ROUND = range(2)
 
     MOVE_VERTEX, NEAR_VERTEX = range(2)
@@ -30,12 +29,10 @@ class Shape(object):
     scale = 1.0
     label_font_size = 8
 
-    def __init__(self, label=None, line_color=None, difficult=False):
-        self.label = label
+    def __init__(self):
         self.points = []
         self.fill = False
         self.selected = False
-        self.difficult = difficult
 
         self._highlight_index = None
         self._highlight_mode = self.NEAR_VERTEX
@@ -45,12 +42,6 @@ class Shape(object):
         }
 
         self._closed = False
-
-        if line_color is not None:
-            # Override the class line_color attribute
-            # with an object attribute. Currently this
-            # is used for drawing the pending line a different color.
-            self.line_color = line_color
 
     def close(self):
         self._closed = True
@@ -156,7 +147,7 @@ class Shape(object):
         self._highlight_index = None
 
     def copy(self):
-        shape = Shape("%s" % self.label)
+        shape = Shape()
         shape.points = [p for p in self.points]
         shape.fill = self.fill
         shape.selected = self.selected

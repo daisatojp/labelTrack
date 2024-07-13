@@ -514,7 +514,7 @@ class MainWindow(QMainWindow):
         x, y, w, h = self.read_bbox_list(idx)
         xmin, ymin, xmax, ymax = x, y, x + w, y + h
         if 0.0 < w and 0.0 < h:
-            shape = Shape(label='object')
+            shape = Shape()
             shape.add_point(QPointF(xmin, ymin))
             shape.add_point(QPointF(xmax, ymin))
             shape.add_point(QPointF(xmax, ymax))
@@ -630,7 +630,7 @@ class Canvas(QWidget):
         self.selected_shape_copy = None
         self.drawing_line_color = QColor(0, 0, 255)
         self.drawing_rect_color = QColor(0, 0, 255)
-        self.line = Shape(line_color=self.drawing_line_color)
+        self.line = Shape()
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
