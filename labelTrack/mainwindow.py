@@ -786,7 +786,7 @@ class Canvas(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         pos = self.__transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.mode == CANVAS_EDIT_MODE:
+            if self.mode == CANVAS_CREATE_MODE:
                 self.handle_drawing(pos)
             else:
                 selection = self.select_shape_point(pos)
@@ -804,7 +804,7 @@ class Canvas(QWidget):
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
             pos = self.__transform_pos(event.pos())
-            if self.mode == CANVAS_EDIT_MODE:
+            if self.mode == CANVAS_CREATE_MODE:
                 self.handle_drawing(pos)
             else:
                 QApplication.restoreOverrideCursor()
@@ -840,7 +840,7 @@ class Canvas(QWidget):
             p.setBrush(brush)
             p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
 
-        if (self.mode == CANVAS_EDIT_MODE) and \
+        if (self.mode == CANVAS_CREATE_MODE) and \
            (not self.prev_point.isNull()) and \
            (not self.out_of_pixmap(self.prev_point)):
             p.setPen(QColor(0, 0, 0))
