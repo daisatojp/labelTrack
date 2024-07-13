@@ -673,7 +673,7 @@ class Canvas(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         """Update line with last point and current coordinates."""
-        pos = self.transform_pos(event.pos())
+        pos = self.__transform_pos(event.pos())
         self.p.label_coordinates.setText(
             f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
         # Polygon drawing.
@@ -784,7 +784,7 @@ class Canvas(QWidget):
             self.override_cursor(CURSOR_DEFAULT)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        pos = self.transform_pos(event.pos())
+        pos = self.__transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_EDIT_MODE:
                 self.handle_drawing(pos)
@@ -803,7 +803,7 @@ class Canvas(QWidget):
             else:
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
-            pos = self.transform_pos(event.pos())
+            pos = self.__transform_pos(event.pos())
             if self.mode == CANVAS_EDIT_MODE:
                 self.handle_drawing(pos)
             else:
@@ -819,7 +819,7 @@ class Canvas(QWidget):
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         p.scale(self.scale, self.scale)
-        p.translate(self.offset_to_center())
+        p.translate(self.__offset_to_center())
 
         p.drawPixmap(0, 0, self.pixmap)
         Shape.scale = self.scale
@@ -996,20 +996,6 @@ class Canvas(QWidget):
             self.selectionChanged.emit(False)
             self.update()
 
-    def transform_pos(self, point):
-        """Convert from widget-logical coordinates to painter-logical coordinates."""
-        pointf = QPointF(point.x(), point.y())
-        return pointf / self.scale - self.offset_to_center()
-
-    def offset_to_center(self):
-        s = self.scale
-        area = super(Canvas, self).size()
-        w, h = self.pixmap.width() * s, self.pixmap.height() * s
-        aw, ah = area.width(), area.height()
-        x = (aw - w) / (2 * s) if aw > w else 0
-        y = (ah - h) / (2 * s) if ah > h else 0
-        return QPointF(x, y)
-
     def out_of_pixmap(self, p):
         w, h = self.pixmap.width(), self.pixmap.height()
         return not (0 <= p.x() <= w and 0 <= p.y() <= h)
@@ -1095,3 +1081,18 @@ class Canvas(QWidget):
         self.restore_cursor()
         self.pixmap = None
         self.update()
+
+    def __transform_pos(self, point: QPoint) -> QPointF:
+        pointf = QPointF(point.x(), point.y())
+        return pointf / self.scale - self.__offset_to_center()
+
+    def __offset_to_center(self) -> QPointF:
+        s = self.scale
+        area = super(Canvas, self).size()
+        w = self.pixmap.width() * s
+        h = self.pixmap.height() * s
+        aw = area.width()
+        ah = area.height()
+        x = (aw - w) / (2 * s) if aw > w else 0
+        y = (ah - h) / (2 * s) if ah > h else 0
+        return QPointF(x, y)
