@@ -625,8 +625,7 @@ class Canvas(QWidget):
         self.mode = self.EDIT
         self.shape = None
         self.current = None
-        self.selected_shape = None  # save the selected shape here
-        self.selected_shape_copy = None
+        self.selected_shape = None
         self.drawing_line_color = QColor(0, 0, 255)
         self.drawing_rect_color = QColor(0, 0, 255)
         self.line = Shape()
@@ -634,9 +633,6 @@ class Canvas(QWidget):
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
         self.pixmap = QPixmap()
-        self.visible = {}
-        self._hide_background = False
-        self.hide_background = False
         self.h_shape = None
         self.h_vertex = None
         self._painter = QPainter()
@@ -835,8 +831,6 @@ class Canvas(QWidget):
         if self.current:
             self.current.paint(p)
             self.line.paint(p)
-        if self.selected_shape_copy:
-            self.selected_shape_copy.paint(p)
 
         # Paint rect
         if self.current is not None and len(self.line) == 2:
@@ -893,9 +887,6 @@ class Canvas(QWidget):
     def set_drawing_color(self, qcolor):
         self.drawing_line_color = qcolor
         self.drawing_rect_color = qcolor
-
-    def isVisible(self, shape):
-        return self.visible.get(shape, True)
 
     def drawing(self):
         return self.mode == self.CREATE
@@ -958,7 +949,7 @@ class Canvas(QWidget):
             self.select_shape(shape)
             return self.h_vertex
         if self.shape is not None:
-            if self.isVisible(self.shape) and self.shape.contains_point(point):
+            if self.shape.contains_point(point):
                 self.select_shape(self.shape)
                 self.calculate_offsets(self.shape, point)
                 return self.selected_shape
