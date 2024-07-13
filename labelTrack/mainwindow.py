@@ -87,7 +87,6 @@ class MainWindow(QMainWindow):
         self.scroll_bars = {
             Qt.Orientation.Vertical: self.scroll_area.verticalScrollBar(),
             Qt.Orientation.Horizontal: self.scroll_area.horizontalScrollBar()}
-        self.canvas.drawingPolygon.connect(self.toggle_drawing_sensitive)
 
         self.setCentralWidget(self.scroll_area)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
@@ -540,9 +539,6 @@ class ToolButton(QToolButton):
 
 
 class Canvas(QWidget):
-    selectionChanged = pyqtSignal(bool)
-    drawingPolygon = pyqtSignal(bool)
-
     epsilon = 11.0
 
     def __init__(self, parent: MainWindow) -> None:
@@ -584,7 +580,7 @@ class Canvas(QWidget):
         if   key == Qt.Key.Key_Escape and self.current:
             print('ESC press')
             self.current = None
-            self.drawingPolygon.emit(False)
+            self.p.toggle_drawing_sensitive(False)
             self.update()
         elif key == Qt.Key.Key_Return and self.can_close_shape():
             self.finalise()
@@ -840,7 +836,6 @@ class Canvas(QWidget):
             self.current = Shape()
             self.current.add_point(pos)
             self.line.points = [pos, pos]
-            self.drawingPolygon.emit(True)
             self.update()
 
     def can_close_shape(self):
@@ -850,7 +845,6 @@ class Canvas(QWidget):
         self.de_select_shape()
         shape.selected = True
         self.selected_shape = shape
-        # self.selectionChanged.emit(True)
         self.update()
 
     def select_shape_point(self, point):
@@ -923,7 +917,6 @@ class Canvas(QWidget):
         if self.selected_shape:
             self.selected_shape.selected = False
             self.selected_shape = None
-            self.selectionChanged.emit(False)
             self.update()
 
     def out_of_pixmap(self, p):
@@ -934,7 +927,7 @@ class Canvas(QWidget):
         assert self.current
         if self.current.points[0] == self.current.points[-1]:
             self.current = None
-            self.drawingPolygon.emit(False)
+            self.p.toggle_drawing_sensitive(False)
             self.update()
             return
         self.current.close()
