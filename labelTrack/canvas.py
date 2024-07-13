@@ -330,26 +330,6 @@ class Canvas(QWidget):
     def selected_vertex(self):
         return self.h_vertex is not None
 
-    def end_move(self, copy=False):
-        assert self.selected_shape
-        shape = self.selected_shape_copy
-        if copy:
-            self.shape = shape
-            self.selected_shape.selected = False
-            self.selected_shape = shape
-            self.repaint()
-        else:
-            self.selected_shape.points = [p for p in shape.points]
-        self.selected_shape_copy = None
-
-    def hide_background_shapes(self, value):
-        self.hide_background = value
-        if self.selected_shape:
-            # Only hide other shapes if there is a current selection.
-            # Otherwise the user will not be able to select a shape.
-            self.set_hiding(True)
-            self.repaint()
-
     def handle_drawing(self, pos):
         if self.current and self.current.reach_max_points() is False:
             init_pos = self.current[0]
@@ -407,20 +387,6 @@ class Canvas(QWidget):
         y2 = (rect.y() + rect.height()) - point.y()
         self.offsets = QPointF(x1, y1), QPointF(x2, y2)
 
-    def snap_point_to_canvas(self, x, y):
-        """
-        Moves a point x,y to within the boundaries of the canvas.
-        :return: (x,y,snapped) where snapped is True if x or y were changed, False if not.
-        """
-        if x < 0 or x > self.pixmap.width() or y < 0 or y > self.pixmap.height():
-            x = max(x, 0)
-            y = max(y, 0)
-            x = min(x, self.pixmap.width())
-            y = min(y, self.pixmap.height())
-            return x, y, True
-
-        return x, y, False
-
     def bounded_move_vertex(self, pos):
         index, shape = self.h_vertex, self.h_shape
         point = shape[index]
@@ -471,35 +437,6 @@ class Canvas(QWidget):
             self.set_hiding(False)
             self.selectionChanged.emit(False)
             self.update()
-
-    def delete_selected(self):
-        if self.selected_shape:
-            shape = self.selected_shape
-            self.un_highlight(shape)
-            self.shape = None
-            self.selected_shape = None
-            self.update()
-            return shape
-
-    def copy_selected_shape(self):
-        if self.selected_shape:
-            shape = self.selected_shape.copy()
-            self.de_select_shape()
-            self.shape = shape
-            shape.selected = True
-            self.selected_shape = shape
-            self.bounded_shift_shape(shape)
-            return shape
-
-    def bounded_shift_shape(self, shape):
-        # Try to move in one direction, and if it fails in another.
-        # Give up if both fail.
-        point = shape[0]
-        offset = QPointF(2.0, 2.0)
-        self.calculate_offsets(shape, point)
-        self.prev_point = point
-        if not self.bounded_move_shape(shape, point - offset):
-            self.bounded_move_shape(shape, point + offset)
 
     def transform_pos(self, point):
         """Convert from widget-logical coordinates to painter-logical coordinates."""
@@ -572,16 +509,6 @@ class Canvas(QWidget):
         points = [p1 + p2 for p1, p2 in zip(self.selected_shape.points, [step] * 4)]
         return True in map(self.out_of_pixmap, points)
 
-    def reset_all_lines(self):
-        assert self.shapes
-        self.current = self.shapes.pop()
-        self.current.set_open()
-        self.line.points = [self.current[-1], self.current[0]]
-        self.drawingPolygon.emit(True)
-        self.current = None
-        self.drawingPolygon.emit(False)
-        self.update()
-
     def load_pixmap(self, pixmap):
         self.pixmap = pixmap
         self.repaint()
@@ -589,10 +516,6 @@ class Canvas(QWidget):
     def load_shape(self, shape):
         self.shape = shape
         self.current = None
-        self.repaint()
-
-    def set_shape_visible(self, shape, value):
-        self.visible[shape] = value
         self.repaint()
 
     def current_cursor(self):
