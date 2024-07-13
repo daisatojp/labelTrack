@@ -855,19 +855,9 @@ class Canvas(QWidget):
         p.end()
 
     def wheelEvent(self, event: QWheelEvent) -> None:
-        qt_version = 4 if hasattr(event, "delta") else 5
-        if qt_version == 4:
-            if event.orientation() == Qt.Orientation.Vertical:
-                v_delta = event.delta()
-                h_delta = 0
-            else:
-                h_delta = event.delta()
-                v_delta = 0
-        else:
-            delta = event.angleDelta()
-            h_delta = delta.x()
-            v_delta = delta.y()
-
+        delta = event.angleDelta()
+        h_delta = delta.x()
+        v_delta = delta.y()
         modifier = event.modifiers()
         if (Qt.KeyboardModifier.ControlModifier == modifier) and v_delta:
             self.zoomRequest.emit(v_delta)
