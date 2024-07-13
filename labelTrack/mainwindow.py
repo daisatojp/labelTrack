@@ -193,8 +193,8 @@ class MainWindow(QMainWindow):
         self.load_label()
         self.load_image_dir()
 
-        self.label_coordinates = QLabel('')
-        self.statusBar().addPermanentWidget(self.label_coordinates)
+        self.status_label = QLabel('')
+        self.statusBar().addPermanentWidget(self.status_label)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self.may_continue():
@@ -597,7 +597,7 @@ class Canvas(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         pos = self.__transform_pos(event.pos())
-        self.p.label_coordinates.setText(f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
+        self.p.status_label.setText(f'X: {pos.x():.1f}; Y: {pos.y():.1f}')
 
         if self.mode == CANVAS_CREATE_MODE:
             self.override_cursor(CURSOR_DRAW)
@@ -605,7 +605,7 @@ class Canvas(QWidget):
                 # Display annotation width and height while drawing
                 current_width = abs(self.current[0].x() - pos.x())
                 current_height = abs(self.current[0].y() - pos.y())
-                self.p.label_coordinates.setText(
+                self.p.status_label.setText(
                     f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
                 color = self.drawing_line_color
                 if self.out_of_pixmap(pos):
@@ -643,7 +643,7 @@ class Canvas(QWidget):
                 point3 = self.h_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().label_coordinates.setText(
+                self.parent().window().status_label.setText(
                     f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
             elif self.selected_shape and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
@@ -655,7 +655,7 @@ class Canvas(QWidget):
                 point3 = self.selected_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().label_coordinates.setText(
+                self.parent().window().status_label.setText(
                     f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
             else:
                 # pan
@@ -696,7 +696,7 @@ class Canvas(QWidget):
                 point3 = self.h_shape[3]
                 current_width = abs(point1.x() - point3.x())
                 current_height = abs(point1.y() - point3.y())
-                self.parent().window().label_coordinates.setText(
+                self.parent().window().status_label.setText(
                     f'Width: {current_width}, Height: {current_height} / X: {pos.x()}; Y: {pos.y()}')
         else:  # Nothing found, clear highlights, reset state.
             if self.h_shape:
