@@ -79,7 +79,6 @@ class MainWindow(QMainWindow):
         self.file_dock.setWidget(file_list_container)
 
         self.canvas = Canvas(parent=self)
-        self.canvas.zoomRequest.connect(self.__zoom_request)
         self.canvas.set_drawing_color(DEFAULT_LINE_COLOR)
 
         scroll = QScrollArea()
@@ -395,6 +394,33 @@ class MainWindow(QMainWindow):
         self.dirty = False
         self.save_action.setEnabled(False)
 
+    def zoom_request(self, delta: int) -> None:
+        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
+        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
+        h_bar_max = h_bar.maximum()
+        v_bar_max = v_bar.maximum()
+        cursor = QCursor()
+        pos = cursor.pos()
+        relative_pos = QWidget.mapFromGlobal(self, pos)
+        cursor_x = relative_pos.x()
+        cursor_y = relative_pos.y()
+        w = self.scroll_area.width()
+        h = self.scroll_area.height()
+        margin = 0.1
+        move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
+        move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
+        move_x = min(max(move_x, 0), 1)
+        move_y = min(max(move_y, 0), 1)
+        units = delta // (8 * 15)
+        scale = 10
+        self.__add_zoom(scale * units)
+        d_h_bar_max = h_bar.maximum() - h_bar_max
+        d_v_bar_max = v_bar.maximum() - v_bar_max
+        new_h_bar_value = int(h_bar.value() + move_x * d_h_bar_max)
+        new_v_bar_value = int(v_bar.value() + move_y * d_v_bar_max)
+        h_bar.setValue(new_h_bar_value)
+        v_bar.setValue(new_v_bar_value)
+
     def __load_image(self) -> None:
         item = self.img_list_widget.currentItem()
         if item is None:
@@ -477,33 +503,6 @@ class MainWindow(QMainWindow):
     def __set_fit_window(self):
         self.zoom_spinbox.setValue(int(100 * self.__scale_fit_window()))
 
-    def __zoom_request(self, delta):
-        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
-        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
-        h_bar_max = h_bar.maximum()
-        v_bar_max = v_bar.maximum()
-        cursor = QCursor()
-        pos = cursor.pos()
-        relative_pos = QWidget.mapFromGlobal(self, pos)
-        cursor_x = relative_pos.x()
-        cursor_y = relative_pos.y()
-        w = self.scroll_area.width()
-        h = self.scroll_area.height()
-        margin = 0.1
-        move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
-        move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
-        move_x = min(max(move_x, 0), 1)
-        move_y = min(max(move_y, 0), 1)
-        units = delta // (8 * 15)
-        scale = 10
-        self.__add_zoom(scale * units)
-        d_h_bar_max = h_bar.maximum() - h_bar_max
-        d_v_bar_max = v_bar.maximum() - v_bar_max
-        new_h_bar_value = int(h_bar.value() + move_x * d_h_bar_max)
-        new_v_bar_value = int(v_bar.value() + move_y * d_v_bar_max)
-        h_bar.setValue(new_h_bar_value)
-        v_bar.setValue(new_v_bar_value)
-
     def __scale_fit_window(self) -> float:
         e = 2.0  # so that no scrollbars are generated.
         w1 = self.centralWidget().width() - e
@@ -546,7 +545,6 @@ class ToolButton(QToolButton):
 
 
 class Canvas(QWidget):
-    zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, object)
     selectionChanged = pyqtSignal(bool)
     drawingPolygon = pyqtSignal(bool)
@@ -797,7 +795,7 @@ class Canvas(QWidget):
         v_delta = delta.y()
         modifier = event.modifiers()
         if (Qt.KeyboardModifier.ControlModifier == modifier) and v_delta:
-            self.zoomRequest.emit(v_delta)
+            self.p.zoom_request(v_delta)
         else:
             v_delta and self.scrollRequest.emit(v_delta, Qt.Orientation.Vertical)
             h_delta and self.scrollRequest.emit(h_delta, Qt.Orientation.Horizontal)
