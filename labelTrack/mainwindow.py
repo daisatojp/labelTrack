@@ -775,9 +775,6 @@ class Canvas(QWidget):
                 if self.selected_vertex():
                     self.h_shape.highlight_clear()
                 self.h_vertex, self.h_shape = None, self.shape
-                self.setToolTip(
-                    "Click & drag to move shape '%s'" % self.shape.label)
-                self.setStatusTip(self.toolTip())
                 self.override_cursor(CURSOR_GRAB)
                 self.update()
                 # Display annotation width and height while hovering inside

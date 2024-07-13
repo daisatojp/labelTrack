@@ -55,11 +55,6 @@ class Shape:
         if not self.reach_max_points():
             self.points.append(point)
 
-    def pop_point(self):
-        if self.points:
-            return self.points.pop()
-        return None
-
     def is_closed(self):
         return self._closed
 
