@@ -21,7 +21,6 @@ CURSOR_GRAB = Qt.CursorShape.OpenHandCursor
 
 
 class MainWindow(QMainWindow):
-    FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
 
     def __init__(self, image_dir, label_path):
         super(MainWindow, self).__init__()
@@ -125,23 +124,19 @@ class MainWindow(QMainWindow):
         self.zoom_in_action = QAction('Zoom In', self)
         self.zoom_in_action.setIcon(read_icon('zoom-in'))
         self.zoom_in_action.setShortcut('Ctrl++')
-        self.zoom_in_action.triggered.connect(partial(self.add_zoom, 10))
+        self.zoom_in_action.triggered.connect(partial(self.__add_zoom, 10))
         self.zoom_out_action = QAction('Zoom Out', self)
         self.zoom_out_action.setIcon(read_icon('zoom-out'))
         self.zoom_out_action.setShortcut('Ctrl+-')
-        self.zoom_out_action.triggered.connect(partial(self.add_zoom, -10))
+        self.zoom_out_action.triggered.connect(partial(self.__add_zoom, -10))
         self.zoom_org_action = QAction('Original Size', self)
         self.zoom_org_action.setIcon(read_icon('zoom'))
         self.zoom_org_action.setShortcut('Ctrl+=')
-        self.zoom_org_action.triggered.connect(partial(self.set_zoom, 100))
+        self.zoom_org_action.triggered.connect(self.__reset_zoom)
         self.fit_window_action = QAction('Fit Window', self)
         self.fit_window_action.setIcon(read_icon('fit-window'))
         self.fit_window_action.setShortcut('Ctrl+F')
-        self.fit_window_action.triggered.connect(self.set_fit_window)
-        self.zoom_mode = self.MANUAL_ZOOM
-        self.scalers = {
-            self.FIT_WINDOW: self.scale_fit_window,
-            self.MANUAL_ZOOM: lambda: 1}
+        self.fit_window_action.triggered.connect(self.__set_fit_window)
         self.menus_file = self.menuBar().addMenu('File')
         self.menus_edit = self.menuBar().addMenu('Edit')
         self.menus_view = self.menuBar().addMenu('View')
@@ -215,10 +210,6 @@ class MainWindow(QMainWindow):
         settings.save()
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        if (self.canvas) and \
-           (not self.image.isNull()) and \
-           (self.zoom_mode != self.MANUAL_ZOOM):
-            self.adjust_scale()
         super(MainWindow, self).resizeEvent(event)
 
     def status(self, message, delay=5000):
@@ -350,65 +341,12 @@ class MainWindow(QMainWindow):
         bar = self.scroll_bars[orientation]
         bar.setValue(int(bar.value() + bar.singleStep() * units))
 
-    def set_zoom(self, value):
-        self.fit_window_action.setChecked(False)
-        self.zoom_mode = self.MANUAL_ZOOM
-        self.zoom_spinbox.setValue(int(value))
-
-    def add_zoom(self, increment=10):
-        self.set_zoom(self.zoom_spinbox.value() + increment)
-
-    def __zoom_request(self, delta):
-        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
-        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
-        h_bar_max = h_bar.maximum()
-        v_bar_max = v_bar.maximum()
-        cursor = QCursor()
-        pos = cursor.pos()
-        relative_pos = QWidget.mapFromGlobal(self, pos)
-        cursor_x = relative_pos.x()
-        cursor_y = relative_pos.y()
-        w = self.scroll_area.width()
-        h = self.scroll_area.height()
-        margin = 0.1
-        move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
-        move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
-        move_x = min(max(move_x, 0), 1)
-        move_y = min(max(move_y, 0), 1)
-        units = delta // (8 * 15)
-        scale = 10
-        self.add_zoom(scale * units)
-        d_h_bar_max = h_bar.maximum() - h_bar_max
-        d_v_bar_max = v_bar.maximum() - v_bar_max
-        new_h_bar_value = int(h_bar.value() + move_x * d_h_bar_max)
-        new_v_bar_value = int(v_bar.value() + move_y * d_v_bar_max)
-        h_bar.setValue(new_h_bar_value)
-        v_bar.setValue(new_v_bar_value)
-
-    def set_fit_window(self, value=True):
-        self.zoom_mode = self.FIT_WINDOW
-        self.adjust_scale()
-
     def paint_canvas(self):
         if self.image.isNull():
             return
         self.canvas.scale = 0.01 * self.zoom_spinbox.value()
         self.canvas.adjustSize()
         self.canvas.update()
-
-    def adjust_scale(self, initial=False):
-        value = self.scalers[self.FIT_WINDOW if initial else self.zoom_mode]()
-        self.zoom_spinbox.setValue(int(100 * value))
-
-    def scale_fit_window(self):
-        e = 2.0  # so that no scrollbars are generated.
-        w1 = self.centralWidget().width() - e
-        h1 = self.centralWidget().height() - e
-        a1 = w1 / h1
-        w2 = self.canvas.pixmap.width() - 0.0
-        h2 = self.canvas.pixmap.height() - 0.0
-        a2 = w2 / h2
-        return w1 / w2 if a1 <= a2 else h1 / h2
 
     def may_continue(self):
         if not self.dirty:
@@ -450,7 +388,7 @@ class MainWindow(QMainWindow):
         self.update_shape()
         self.set_clean()
         self.canvas.setEnabled(True)
-        self.adjust_scale(initial=True)
+        self.__set_fit_window()
         self.paint_canvas()
         idx = self.img_list_widget.currentRow()
         cnt = self.img_list_widget.count()
@@ -523,6 +461,51 @@ class MainWindow(QMainWindow):
         self.dirty = False
         self.save_action.setEnabled(False)
 
+    def __reset_zoom(self) -> None:
+        self.zoom_spinbox.setValue(100)
+
+    def __add_zoom(self, increment: int) -> None:
+        self.zoom_spinbox.setValue(int(self.zoom_spinbox.value() + increment))
+
+    def __set_fit_window(self):
+        self.zoom_spinbox.setValue(int(100 * self.__scale_fit_window()))
+
+    def __zoom_request(self, delta):
+        h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
+        v_bar = self.scroll_bars[Qt.Orientation.Vertical]
+        h_bar_max = h_bar.maximum()
+        v_bar_max = v_bar.maximum()
+        cursor = QCursor()
+        pos = cursor.pos()
+        relative_pos = QWidget.mapFromGlobal(self, pos)
+        cursor_x = relative_pos.x()
+        cursor_y = relative_pos.y()
+        w = self.scroll_area.width()
+        h = self.scroll_area.height()
+        margin = 0.1
+        move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
+        move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
+        move_x = min(max(move_x, 0), 1)
+        move_y = min(max(move_y, 0), 1)
+        units = delta // (8 * 15)
+        scale = 10
+        self.__add_zoom(scale * units)
+        d_h_bar_max = h_bar.maximum() - h_bar_max
+        d_v_bar_max = v_bar.maximum() - v_bar_max
+        new_h_bar_value = int(h_bar.value() + move_x * d_h_bar_max)
+        new_v_bar_value = int(v_bar.value() + move_y * d_v_bar_max)
+        h_bar.setValue(new_h_bar_value)
+        v_bar.setValue(new_v_bar_value)
+
+    def __scale_fit_window(self) -> float:
+        e = 2.0  # so that no scrollbars are generated.
+        w1 = self.centralWidget().width() - e
+        h1 = self.centralWidget().height() - e
+        a1 = w1 / h1
+        w2 = self.canvas.pixmap.width() - 0.0
+        h2 = self.canvas.pixmap.height() - 0.0
+        a2 = w2 / h2
+        return w1 / w2 if a1 <= a2 else h1 / h2
 
 class ToolBar(QToolBar):
 
