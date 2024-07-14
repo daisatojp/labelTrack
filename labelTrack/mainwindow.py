@@ -164,7 +164,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.fit_window_action)
         self.statusBar().showMessage(f'{__appname__} started.')
         self.statusBar().show()
-        self.image = QImage()
         self.zoom_level = 100
 
         window_x = settings.get(SETTINGS_KEY_WINDOW_X, 0)
@@ -209,7 +208,7 @@ class MainWindow(QMainWindow):
         self.__load_image()
 
     def paint_canvas(self):
-        if self.image.isNull():
+        if self.canvas.pixmap is None:
             return
         self.canvas.scale = 0.01 * self.zoom_spinbox.value()
         self.canvas.adjustSize()
@@ -355,7 +354,7 @@ class MainWindow(QMainWindow):
         QMB.information(self, 'Information', msg)
 
     def __create_bbox(self):
-        if self.image.isNull():
+        if self.canvas.pixmap is None:
             return
         self.canvas.set_editing(False)
         self.create_bbox_action.setEnabled(False)
@@ -389,7 +388,6 @@ class MainWindow(QMainWindow):
                 f'Could not read {file_path}')
             self.status(f'Error reading {file_path}')
             return
-        self.image = img
         self.canvas.load_pixmap(QPixmap.fromImage(img))
         self.status(f'Loaded {osp.basename(file_path)}')
         self.update_shape()
@@ -522,7 +520,7 @@ class Canvas(QWidget):
         super(Canvas, self).__init__(parent)
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
-        self.pixmap = QPixmap()
+        self.pixmap: Optional[QPixmap] = None
         self.bbox: Optional[BBox] = None
 
         self._mx: Optional[float] = None
@@ -578,6 +576,9 @@ class Canvas(QWidget):
         pass
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self.pixmap is None:
+            return
+
         pos = self.__transform_pos(event.pos())
         mx = pos.x()
         my = pos.y()
@@ -684,6 +685,9 @@ class Canvas(QWidget):
             self.override_cursor(CURSOR_DEFAULT)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
+        if self.pixmap is None:
+            return
+        
         pos = self.__transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_CREATE_MODE:
@@ -712,8 +716,9 @@ class Canvas(QWidget):
                 QApplication.restoreOverrideCursor()
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        if not self.pixmap:
-            return super(Canvas, self).paintEvent(event)
+        if self.pixmap is None:
+            super(Canvas, self).paintEvent(event)
+            return
 
         p = self._painter
         p.begin(self)
