@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 from functools import partial
 import os.path as osp
@@ -543,29 +544,14 @@ class Canvas(QWidget):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         if   key == Qt.Key.Key_Left:
-            if not self.bbox.empty():
-                bbox = self.bbox
-                bbox.move(-1.0, 0.0)
-                self.bbox = bbox
-                self.p.set_dirty(True)
+            self.__move_bbox(-1.0, 0.0)
         elif key == Qt.Key.Key_Right:
-            if not self.bbox.empty():
-                bbox = self.bbox
-                bbox.move(+1.0, 0.0)
-                self.bbox = bbox
-                self.p.set_dirty(True)
+            self.__move_bbox(+1.0, 0.0)
         elif key == Qt.Key.Key_Up:
-            if not self.bbox.empty():
-                bbox = self.bbox
-                bbox.move(0.0, -1.0)
-                self.bbox = bbox
-                self.p.set_dirty(True)
+            self.__move_bbox(0.0, -1.0)
         elif key == Qt.Key.Key_Down:
-            if not self.bbox.empty():
-                bbox = self.bbox
-                bbox.move(0.0, +1.0)
-                self.bbox = bbox
-                self.p.set_dirty(True)
+            self.__move_bbox(0.0, +1.0)
+        self.update()
 
     def leaveEvent(self, event: QEvent) -> None:
         self.restore_cursor()
@@ -809,6 +795,20 @@ class Canvas(QWidget):
     def __in_pixmap(self, x: int | float, y: int | float) -> bool:
         w, h = self.pixmap.width(), self.pixmap.height()
         return (0 <= x <= w) and (0 <= y <= h)
+
+    def __move_bbox(self, dx: float, dy: float) -> None:
+        if self.bbox.empty():
+            return
+        bbox = copy.copy(self.bbox)
+        bbox.move(dx, dy)
+        w = self.pixmap.width()
+        h = self.pixmap.height()
+        if (0 <= bbox.xmin()) and \
+           (bbox.xmax() < w) and \
+           (0 <= bbox.ymin()) and \
+           (bbox.ymax() < h):
+            self.bbox = bbox
+            self.p.set_dirty(True)
 
     def __nearest_vertex(self, point: QPointF, eps: float) -> Optional[int]:
         for i in range(4):
