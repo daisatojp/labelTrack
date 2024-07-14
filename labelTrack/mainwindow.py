@@ -323,11 +323,6 @@ class MainWindow(QMainWindow):
     def status(self, message, delay=5000):
         self.statusBar().showMessage(message, delay)
 
-    def toggle_drawing_sensitive(self, drawing=True):
-        if not drawing:
-            self.canvas.set_editing(True)
-            self.canvas.restore_cursor()
-
     def file_current_item_changed(self, item=None):
         self.__load_image()
 
@@ -638,15 +633,11 @@ class Canvas(QWidget):
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
         self._bbox_sy: Optional[float] = None
-        self._highlighted: bool = False
+        self._highlighted_bbox: bool = False
         self._highlighted_pidx: Optional[int] = None
 
         self.shape = None
-        self.selected_shape = None
-        self.prev_point = QPointF()
-        self.offsets = QPointF(), QPointF()
-        self.h_shape = None
-        self.h_vertex = None
+
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
 
@@ -660,14 +651,26 @@ class Canvas(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
-        if   key == Qt.Key.Key_Left and self.selected_shape:
-            self.move_one_pixel('Left')
-        elif key == Qt.Key.Key_Right and self.selected_shape:
-            self.move_one_pixel('Right')
-        elif key == Qt.Key.Key_Up and self.selected_shape:
-            self.move_one_pixel('Up')
-        elif key == Qt.Key.Key_Down and self.selected_shape:
-            self.move_one_pixel('Down')
+        if   key == Qt.Key.Key_Left:
+            if self.shape is not None:
+                bbox = self.shape.bbox
+                bbox.move(-1.0, 0.0)
+                self.p.set_dirty(True)
+        elif key == Qt.Key.Key_Right:
+            if self.shape is not None:
+                bbox = self.shape.bbox
+                bbox.move(+1.0, 0.0)
+                self.p.set_dirty(True)
+        elif key == Qt.Key.Key_Up:
+            if self.shape is not None:
+                bbox = self.shape.bbox
+                bbox.move(0.0, -1.0)
+                self.p.set_dirty(True)
+        elif key == Qt.Key.Key_Down:
+            if self.shape is not None:
+                bbox = self.shape.bbox
+                bbox.move(0.0, +1.0)
+                self.p.set_dirty(True)
 
     def leaveEvent(self, event: QEvent) -> None:
         self.restore_cursor()
@@ -690,25 +693,10 @@ class Canvas(QWidget):
         self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
 
         if event.buttons() == Qt.MouseButton.LeftButton:
-            if self.selected_vertex():
+            if self._highlighted_pidx is not None:
                 self.bounded_move_vertex(pos)
                 self.p.set_dirty(True)
                 self.repaint()
-                point1 = self.h_shape[1]
-                point3 = self.h_shape[3]
-                current_width = abs(point1.x() - point3.x())
-                current_height = abs(point1.y() - point3.y())
-                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {mx:.2f}; Y: {my:.2f}')
-            elif self.selected_shape and self.prev_point:
-                self.override_cursor(CURSOR_MOVE)
-                self.bounded_move_shape(self.selected_shape, pos)
-                self.p.set_dirty(True)
-                self.repaint()
-                point1 = self.selected_shape[1]
-                point3 = self.selected_shape[3]
-                current_width = abs(point1.x() - point3.x())
-                current_height = abs(point1.y() - point3.y())
-                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {mx:.2f}; Y: {my:.2f}')
             else:
                 delta_x = pos.x() - self.pan_initial_pos.x()
                 delta_y = pos.y() - self.pan_initial_pos.y()
@@ -721,30 +709,18 @@ class Canvas(QWidget):
         if self.shape is not None:
             index = self.shape.nearest_vertex(pos, self.epsilon)
             if index is not None:
-                if self.selected_vertex():
-                    self.h_shape.highlight_clear()
-                self.h_vertex, self.h_shape = index, self.shape
+                self._highlighted_bbox = False
+                self._highlighted_pidx = index
                 self.shape.highlight_vertex(index, self.shape.MOVE_VERTEX)
                 self.override_cursor(CURSOR_POINT)
                 self.setStatusTip(self.toolTip())
-                self.update()
             elif self.shape.contains_point(pos):
-                if self.selected_vertex():
-                    self.h_shape.highlight_clear()
-                self.h_vertex, self.h_shape = None, self.shape
+                self._highlighted_bbox = True
+                self._highlighted_pidx = None
                 self.override_cursor(CURSOR_GRAB)
-                self.update()
-                # Display annotation width and height while hovering inside
-                point1 = self.h_shape[1]
-                point3 = self.h_shape[3]
-                current_width = abs(point1.x() - point3.x())
-                current_height = abs(point1.y() - point3.y())
-                self.p.status_label.setText(f'W: {current_width:.2f}, H: {current_height:.2f} / X: {pos.x():.2f}; Y: {pos.y():.2f}')
-        else:  # Nothing found, clear highlights, reset state.
-            if self.h_shape:
-                self.h_shape.highlight_clear()
-                self.update()
-            self.h_vertex, self.h_shape = None, None
+        else:
+            self._highlighted_bbox = False
+            self._highlighted_pidx = None
             self.override_cursor(CURSOR_DEFAULT)
 
         self.update()
@@ -759,11 +735,9 @@ class Canvas(QWidget):
                 self._bbox_sx = pos.x()
                 self._bbox_sy = pos.y()
             if self.mode == CANVAS_EDIT_MODE:
-                selection = self.select_shape_point(pos)
-                self.prev_point = pos
-                if selection is None:
+                if (self._highlighted_bbox is not None) or \
+                   (self._highlighted_pidx is not None):
                     QApplication.setOverrideCursor(QCursor(Qt.CursorShape.OpenHandCursor))
-                    self.pan_initial_pos = pos
         self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
@@ -772,7 +746,7 @@ class Canvas(QWidget):
 
         pos = self.__transform_pos(event.pos())
         if   event.button() == Qt.MouseButton.LeftButton and self.selected_shape:
-            if self.selected_vertex():
+            if self._highlighted_pidx is not None:
                 self.override_cursor(CURSOR_POINT)
             else:
                 self.override_cursor(CURSOR_GRAB)
@@ -861,137 +835,13 @@ class Canvas(QWidget):
 
     def set_editing(self, value=True):
         self.mode = CANVAS_EDIT_MODE if value else CANVAS_CREATE_MODE
-        if not value:  # Create
-            self.un_highlight()
-            self.de_select_shape()
-        self.prev_point = QPointF()
+        if not value:
+            self._highlighted_bbox = False
+            self._highlighted_pidx = None
         self.repaint()
-
-    def un_highlight(self, shape=None):
-        if shape == None or shape == self.h_shape:
-            if self.h_shape:
-                self.h_shape.highlight_clear()
-            self.h_vertex = self.h_shape = None
-
-    def selected_vertex(self):
-        return self.h_vertex is not None
-
-    def select_shape(self, shape):
-        self.de_select_shape()
-        shape.selected = True
-        self.selected_shape = shape
-        self.update()
-
-    def select_shape_point(self, point):
-        """Select the first shape created which contains this point."""
-        self.de_select_shape()
-        if self.selected_vertex():  # A vertex is marked for selection.
-            index, shape = self.h_vertex, self.h_shape
-            shape.highlight_vertex(index, shape.MOVE_VERTEX)
-            self.select_shape(shape)
-            return self.h_vertex
-        if self.shape is not None:
-            if self.shape.contains_point(point):
-                self.select_shape(self.shape)
-                self.calculate_offsets(self.shape, point)
-                return self.selected_shape
-        return None
-
-    def calculate_offsets(self, shape, point):
-        rect = shape.bounding_rect()
-        x1 = rect.x() - point.x()
-        y1 = rect.y() - point.y()
-        x2 = (rect.x() + rect.width()) - point.x()
-        y2 = (rect.y() + rect.height()) - point.y()
-        self.offsets = QPointF(x1, y1), QPointF(x2, y2)
-
-    def bounded_move_vertex(self, pos):
-        index, shape = self.h_vertex, self.h_shape
-        point = shape[index]
-        if not self.__in_pixmap(pos.x(), pos.y()):
-            size = self.pixmap.size()
-            clipped_x = min(max(0, pos.x()), size.width())
-            clipped_y = min(max(0, pos.y()), size.height())
-            pos = QPointF(clipped_x, clipped_y)
-        shift_pos = pos - point
-        shape.move_vertex_by(index, shift_pos)
-        left_index = (index + 1) % 4
-        right_index = (index + 3) % 4
-        if index % 2 == 0:
-            right_shift = QPointF(shift_pos.x(), 0)
-            left_shift = QPointF(0, shift_pos.y())
-        else:
-            left_shift = QPointF(shift_pos.x(), 0)
-            right_shift = QPointF(0, shift_pos.y())
-        shape.move_vertex_by(right_index, right_shift)
-        shape.move_vertex_by(left_index, left_shift)
-
-    def bounded_move_shape(self, shape, pos):
-        if not self.__in_pixmap(pos.x(), pos.y()):
-            return False  # No need to move
-        o1 = pos + self.offsets[0]
-        if not self.__in_pixmap(o1.x(), o1.y()):
-            pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
-        o2 = pos + self.offsets[1]
-        if not self.__in_pixmap(o2.x(), o2.y()):
-            pos += QPointF(min(0, self.pixmap.width() - o2.x()),
-                           min(0, self.pixmap.height() - o2.y()))
-        # The next line tracks the new position of the cursor
-        # relative to the shape, but also results in making it
-        # a bit "shaky" when nearing the border and allows it to
-        # go outside of the shape's area for some reason. XXX
-        # self.calculateOffsets(self.selectedShape, pos)
-        dp = pos - self.prev_point
-        if dp:
-            shape.move_by(dp)
-            self.prev_point = pos
-            return True
-        return False
-
-    def de_select_shape(self):
-        if self.selected_shape:
-            self.selected_shape.selected = False
-            self.selected_shape = None
-            self.update()
 
     def close_enough(self, p1, p2):
-        # d = distance(p1 - p2)
-        # m = (p1-p2).manhattanLength()
-        # print "d %.2f, m %d, %.2f" % (d, m, d - m)
         return distance(p1 - p2) < self.epsilon
-
-    def move_one_pixel(self, direction):
-        # print(self.selectedShape.points)
-        if direction == 'Left' and not self.move_out_of_bound(QPointF(-1.0, 0)):
-            # print("move Left one pixel")
-            self.selected_shape.points[0] += QPointF(-1.0, 0)
-            self.selected_shape.points[1] += QPointF(-1.0, 0)
-            self.selected_shape.points[2] += QPointF(-1.0, 0)
-            self.selected_shape.points[3] += QPointF(-1.0, 0)
-        elif direction == 'Right' and not self.move_out_of_bound(QPointF(1.0, 0)):
-            # print("move Right one pixel")
-            self.selected_shape.points[0] += QPointF(1.0, 0)
-            self.selected_shape.points[1] += QPointF(1.0, 0)
-            self.selected_shape.points[2] += QPointF(1.0, 0)
-            self.selected_shape.points[3] += QPointF(1.0, 0)
-        elif direction == 'Up' and not self.move_out_of_bound(QPointF(0, -1.0)):
-            # print("move Up one pixel")
-            self.selected_shape.points[0] += QPointF(0, -1.0)
-            self.selected_shape.points[1] += QPointF(0, -1.0)
-            self.selected_shape.points[2] += QPointF(0, -1.0)
-            self.selected_shape.points[3] += QPointF(0, -1.0)
-        elif direction == 'Down' and not self.move_out_of_bound(QPointF(0, 1.0)):
-            # print("move Down one pixel")
-            self.selected_shape.points[0] += QPointF(0, 1.0)
-            self.selected_shape.points[1] += QPointF(0, 1.0)
-            self.selected_shape.points[2] += QPointF(0, 1.0)
-            self.selected_shape.points[3] += QPointF(0, 1.0)
-        self.p.set_dirty(True)
-        self.repaint()
-
-    def move_out_of_bound(self, step):
-        points = [p1 + p2 for p1, p2 in zip(self.selected_shape.points, [step] * 4)]
-        return True in map(self.__in_pixmap, points)
 
     def load_pixmap(self, pixmap):
         self.pixmap = pixmap
