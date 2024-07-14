@@ -540,6 +540,8 @@ class Canvas(QWidget):
         super(Canvas, self).__init__(parent)
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
+        self.pixmap = QPixmap()
+
         self._mx: Optional[float] = None
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
@@ -554,7 +556,6 @@ class Canvas(QWidget):
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
-        self.pixmap = QPixmap()
         self.h_shape = None
         self.h_vertex = None
         self._painter = QPainter()
@@ -612,7 +613,7 @@ class Canvas(QWidget):
                 h = abs(self._bbox_sy - my)
                 self.p.status_label.setText(f'W: {w:.2f}, H: {h:.2f} / X: {mx:.2f}; Y: {my:.2f}')
                 color = self.drawing_line_color
-                if self.out_of_pixmap(pos):
+                if not self.__in_pixmap(pos.x(), pos.y()):
                     size = self.pixmap.size()
                     clipped_x = min(max(0, pos.x()), size.width())
                     clipped_y = min(max(0, pos.y()), size.height())
@@ -746,11 +747,15 @@ class Canvas(QWidget):
         Shape.scale = self.scale
         if self.shape is not None:
             self.shape.paint(p)
-        if self.current:
-            self.current.paint(p)
-            self.line.paint(p)
+        
+        if self.mode == CANVAS_CREATE_MODE:
+            if (self._bbox_sx is None) and \
+               (self._bbox_sy is None) and \
+               (self.__in_pixmap(self._mx, self._my)):
+                p.setPen(QColor(0, 0, 0))
+                p.drawLine(int(self._mx), 0, int(self._mx), int(self.pixmap.height()))
+                p.drawLine(0, int(self._my), int(self.pixmap.width()), int(self._my))
 
-        # Paint rect
         if self.current is not None and len(self.line) == 2:
             left_top = self.line[0]
             right_bottom = self.line[1]
@@ -759,14 +764,7 @@ class Canvas(QWidget):
             p.setPen(self.drawing_rect_color)
             brush = QBrush(Qt.BrushStyle.BDiagPattern)
             p.setBrush(brush)
-            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))
-
-        if (self.mode == CANVAS_CREATE_MODE) and \
-           (not self.prev_point.isNull()) and \
-           (not self.out_of_pixmap(self.prev_point)):
-            p.setPen(QColor(0, 0, 0))
-            p.drawLine(int(self.prev_point.x()), 0, int(self.prev_point.x()), int(self.pixmap.height()))
-            p.drawLine(0, int(self.prev_point.y()), int(self.pixmap.width()), int(self.prev_point.y()))
+            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))            
 
         self.setAutoFillBackground(True)
         pal = self.palette()
@@ -827,7 +825,7 @@ class Canvas(QWidget):
             self.current.add_point(target_pos)
             self.current.add_point(QPointF(min_x, max_y))
             self.finalise()
-        elif not self.out_of_pixmap(pos):
+        elif self.__in_pixmap(pos.x(), pos.y()):
             self.current = Shape()
             self.current.add_point(pos)
             self.line.points = [pos, pos]
@@ -868,7 +866,7 @@ class Canvas(QWidget):
     def bounded_move_vertex(self, pos):
         index, shape = self.h_vertex, self.h_shape
         point = shape[index]
-        if self.out_of_pixmap(pos):
+        if not self.__in_pixmap(pos.x(), pos.y()):
             size = self.pixmap.size()
             clipped_x = min(max(0, pos.x()), size.width())
             clipped_y = min(max(0, pos.y()), size.height())
@@ -887,13 +885,13 @@ class Canvas(QWidget):
         shape.move_vertex_by(left_index, left_shift)
 
     def bounded_move_shape(self, shape, pos):
-        if self.out_of_pixmap(pos):
+        if not self.__in_pixmap(pos.x(), pos.y()):
             return False  # No need to move
         o1 = pos + self.offsets[0]
-        if self.out_of_pixmap(o1):
+        if not self.__in_pixmap(o1.x(), o1.y()):
             pos -= QPointF(min(0, o1.x()), min(0, o1.y()))
         o2 = pos + self.offsets[1]
-        if self.out_of_pixmap(o2):
+        if not self.__in_pixmap(o2.x(), o2.y()):
             pos += QPointF(min(0, self.pixmap.width() - o2.x()),
                            min(0, self.pixmap.height() - o2.y()))
         # The next line tracks the new position of the cursor
@@ -913,10 +911,6 @@ class Canvas(QWidget):
             self.selected_shape.selected = False
             self.selected_shape = None
             self.update()
-
-    def out_of_pixmap(self, p):
-        w, h = self.pixmap.width(), self.pixmap.height()
-        return not (0 <= p.x() <= w and 0 <= p.y() <= h)
 
     def finalise(self):
         assert self.current
@@ -971,7 +965,7 @@ class Canvas(QWidget):
 
     def move_out_of_bound(self, step):
         points = [p1 + p2 for p1, p2 in zip(self.selected_shape.points, [step] * 4)]
-        return True in map(self.out_of_pixmap, points)
+        return True in map(self.__in_pixmap, points)
 
     def load_pixmap(self, pixmap):
         self.pixmap = pixmap
@@ -1017,3 +1011,7 @@ class Canvas(QWidget):
         x = (aw - w) / (2 * s) if aw > w else 0
         y = (ah - h) / (2 * s) if ah > h else 0
         return QPointF(x, y)
+
+    def __in_pixmap(self, x: int | float, y: int | float) -> bool:
+        w, h = self.pixmap.width(), self.pixmap.height()
+        return (0 <= x <= w) and (0 <= y <= h)
