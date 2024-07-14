@@ -640,7 +640,6 @@ class Canvas(QWidget):
         self._highlighted_idx: Optional[int] = None
 
         self.shape = None
-        self.current = None
         self.selected_shape = None
         self.line = Shape()
         self.prev_point = QPointF()
@@ -662,12 +661,7 @@ class Canvas(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
-        if   key == Qt.Key.Key_Escape and self.current:
-            print('ESC press')
-            self.current = None
-            self.p.toggle_drawing_sensitive(False)
-            self.update()
-        elif key == Qt.Key.Key_Left and self.selected_shape:
+        if   key == Qt.Key.Key_Left and self.selected_shape:
             self.move_one_pixel('Left')
         elif key == Qt.Key.Key_Right and self.selected_shape:
             self.move_one_pixel('Right')
@@ -695,32 +689,6 @@ class Canvas(QWidget):
         self._my = my
 
         self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
-
-        if self.mode == CANVAS_CREATE_MODE:
-            self.override_cursor(CURSOR_DRAW)
-            if self.current:
-                w = abs(self._bbox_sx - mx)
-                h = abs(self._bbox_sy - my)
-                self.p.status_label.setText(f'W: {w:.2f}, H: {h:.2f} / X: {mx:.2f}; Y: {my:.2f}')
-                if not self.__in_pixmap(pos.x(), pos.y()):
-                    size = self.pixmap.size()
-                    clipped_x = min(max(0, pos.x()), size.width())
-                    clipped_y = min(max(0, pos.y()), size.height())
-                    pos = QPointF(clipped_x, clipped_y)
-                elif len(self.current) > 1 and self.close_enough(pos, self.current[0]):
-                    # Attract line to starting point and colorise to alert the
-                    # user:
-                    pos = self.current[0]
-                    self.override_cursor(CURSOR_POINT)
-                    self.current.highlight_vertex(0, Shape.NEAR_VERTEX)
-                self.line[1] = pos
-                self.line.line_color = DEFAULT_LINE_COLOR
-                self.prev_point = QPointF()
-                self.current.highlight_clear()
-            else:
-                self.prev_point = pos
-            self.repaint()
-            return
 
         # Polygon/Vertex moving.
         if event.buttons() == Qt.MouseButton.LeftButton:
@@ -790,6 +758,8 @@ class Canvas(QWidget):
                 self.update()
             self.h_vertex, self.h_shape = None, None
             self.override_cursor(CURSOR_DEFAULT)
+        
+        self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if self.pixmap is None:
@@ -800,11 +770,6 @@ class Canvas(QWidget):
             if self.mode == CANVAS_CREATE_MODE:
                 self._bbox_sx = pos.x()
                 self._bbox_sy = pos.y()
-                if self.__in_pixmap(pos.x(), pos.y()):
-                    self.current = Shape()
-                    self.current.add_point(pos)
-                    self.line.points = [pos, pos]
-                    self.update()
             if self.mode == CANVAS_EDIT_MODE:
                 selection = self.select_shape_point(pos)
                 self.prev_point = pos
@@ -821,19 +786,22 @@ class Canvas(QWidget):
             else:
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
-            if self.mode == CANVAS_CREATE_MODE:
-                init_pos = self.current[0]
-                min_x = init_pos.x()
-                min_y = init_pos.y()
-                target_pos = self.line[1]
-                max_x = target_pos.x()
-                max_y = target_pos.y()
+            if (self.mode == CANVAS_CREATE_MODE) and \
+               (self._bbox_sx is not None) and \
+               (self._bbox_sy is not None):
+                x1 = self._bbox_sx
+                y1 = self._bbox_sy
+                x2 = pos.x()
+                y2 = pos.y()
+                xmin = min(x1, x2)
+                ymin = min(y1, y2)
+                xmax = max(x1, x2)
+                ymax = max(y1, y2)
                 self.shape = Shape()
-                self.shape.add_point(self.current.points[0])
-                self.shape.add_point(QPointF(max_x, min_y))
-                self.shape.add_point(target_pos)
-                self.shape.add_point(QPointF(min_x, max_y))
-                self.current = None
+                self.shape.add_point(QPointF(xmin, ymin))
+                self.shape.add_point(QPointF(xmax, ymin))
+                self.shape.add_point(QPointF(xmax, ymax))
+                self.shape.add_point(QPointF(xmin, ymax))
                 self.p.update_bbox_list_by_canvas()
                 self.set_editing(True)
                 self.p.create_bbox_action.setEnabled(True)
@@ -919,9 +887,6 @@ class Canvas(QWidget):
 
     def selected_vertex(self):
         return self.h_vertex is not None
-
-    def can_close_shape(self):
-        return self.drawing() and self.current and len(self.current) > 2
 
     def select_shape(self, shape):
         self.de_select_shape()
@@ -1046,7 +1011,6 @@ class Canvas(QWidget):
 
     def load_shape(self, shape):
         self.shape = shape
-        self.current = None
         self.repaint()
 
     def current_cursor(self):
