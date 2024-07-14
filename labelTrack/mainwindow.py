@@ -800,7 +800,11 @@ class Canvas(QWidget):
             if self.mode == CANVAS_CREATE_MODE:
                 self._bbox_sx = pos.x()
                 self._bbox_sy = pos.y()
-                self.handle_drawing(pos)
+                if self.__in_pixmap(pos.x(), pos.y()):
+                    self.current = Shape()
+                    self.current.add_point(pos)
+                    self.line.points = [pos, pos]
+                    self.update()
             if self.mode == CANVAS_EDIT_MODE:
                 selection = self.select_shape_point(pos)
                 self.prev_point = pos
@@ -818,7 +822,23 @@ class Canvas(QWidget):
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_CREATE_MODE:
-                self.handle_drawing(pos)
+                init_pos = self.current[0]
+                min_x = init_pos.x()
+                min_y = init_pos.y()
+                target_pos = self.line[1]
+                max_x = target_pos.x()
+                max_y = target_pos.y()
+                self.shape = Shape()
+                self.shape.add_point(self.current.points[0])
+                self.shape.add_point(QPointF(max_x, min_y))
+                self.shape.add_point(target_pos)
+                self.shape.add_point(QPointF(min_x, max_y))
+                self.current = None
+                self.p.update_bbox_list_by_canvas()
+                self.set_editing(True)
+                self.p.create_bbox_action.setEnabled(True)
+                self.p.set_dirty(True)
+                self.update()
             else:
                 QApplication.restoreOverrideCursor()
 
@@ -899,35 +919,6 @@ class Canvas(QWidget):
 
     def selected_vertex(self):
         return self.h_vertex is not None
-
-    def handle_drawing(self, pos):
-        if self.current and self.current.reach_max_points() is False:
-            init_pos = self.current[0]
-            min_x = init_pos.x()
-            min_y = init_pos.y()
-            target_pos = self.line[1]
-            max_x = target_pos.x()
-            max_y = target_pos.y()
-            self.current.add_point(QPointF(max_x, min_y))
-            self.current.add_point(target_pos)
-            self.current.add_point(QPointF(min_x, max_y))
-            if self.current.points[0] == self.current.points[-1]:
-                self.current = None
-                self.p.toggle_drawing_sensitive(False)
-                self.update()
-                return
-            self.shape = self.current
-            self.current = None
-            self.p.update_bbox_list_by_canvas()
-            self.set_editing(True)
-            self.p.create_bbox_action.setEnabled(True)
-            self.p.set_dirty(True)
-            self.update()
-        elif self.__in_pixmap(pos.x(), pos.y()):
-            self.current = Shape()
-            self.current.add_point(pos)
-            self.line.points = [pos, pos]
-            self.update()
 
     def can_close_shape(self):
         return self.drawing() and self.current and len(self.current) > 2
