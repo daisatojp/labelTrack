@@ -2,7 +2,10 @@ import copy
 from dataclasses import dataclass
 from functools import partial
 from math import sqrt
+import os
 import os.path as osp
+import re
+import sys
 from typing import Callable
 from typing import Optional
 from PyQt6.QtCore import *
@@ -12,8 +15,6 @@ from PyQt6.QtWidgets import QMessageBox as QMB
 from labelTrack.__init__ import __appname__, __version__
 from labelTrack.settings import settings
 from labelTrack.defines import *
-from labelTrack.utils import scan_all_images
-from labelTrack.utils import read_icon
 
 
 BBOX_COLOR              = QColor(  0, 255,   0, 128)
@@ -815,3 +816,32 @@ class Canvas(QWidget):
             if distance(self.bbox.get_point(i) - point) <= eps:
                 return i
         return None
+
+
+def natural_sort(list: list[str], key = lambda s:s):
+    def get_alphanum_key_func(key):
+        convert = lambda text: int(text) if text.isdigit() else text
+        return lambda s: [convert(c) for c in re.split('([0-9]+)', key(s))]
+    sort_key = get_alphanum_key_func(key)
+    list.sort(key=sort_key)
+
+
+def scan_all_images(folder_path):
+    extensions = [
+        '.{}'.format(fmt.data().decode('ascii').lower())
+        for fmt in QImageReader.supportedImageFormats()]
+    images = []
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            if file.lower().endswith(tuple(extensions)):
+                images.append(osp.abspath(osp.join(root, file)))
+        break
+    natural_sort(images, key=lambda x: x.lower())
+    return images
+
+
+def read_icon(name):
+    path = osp.join('icon', name)
+    if hasattr(sys, '_MEIPASS'):
+        path = osp.join(sys._MEIPASS, path)
+    return QIcon(QPixmap(path))
