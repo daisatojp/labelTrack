@@ -16,15 +16,10 @@ from labelTrack.utils import scan_all_images
 from labelTrack.utils import read_icon
 
 
-BBOX_COLOR             = QColor(  0, 255,   0, 128)
-BBOX_HIGHLIGHTED_COLOR = QColor(255, 255, 255, 255)
-
-DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
-DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
-DEFAULT_SELECT_LINE_COLOR = QColor(255, 255, 255)
-DEFAULT_SELECT_FILL_COLOR = QColor(0, 128, 255, 155)
-DEFAULT_VERTEX_FILL_COLOR = QColor(0, 255, 0, 255)
-DEFAULT_HVERTEX_FILL_COLOR = QColor(255, 0, 0)
+BBOX_COLOR              = QColor(  0, 255,   0, 128)
+BBOX_HIGHLIGHTED_COLOR  = QColor(255, 255, 255, 255)
+POINT_COLOR             = QColor(  0, 255,   0, 255)
+POINT_HIGHLIGHTED_COLOR = QColor(255,   0,   0, 255)
 
 
 @dataclass
@@ -686,13 +681,13 @@ class Canvas(QWidget):
                     path = QPainterPath()
                     path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
                     p.drawPath(path)
-                    p.fillPath(path, DEFAULT_HVERTEX_FILL_COLOR)
+                    p.fillPath(path, POINT_HIGHLIGHTED_COLOR)
                 else:
                     d *= 1.0
                     path = QPainterPath()
                     path.addEllipse(point, d / 2.0, d / 2.0)
                     p.drawPath(path)
-                    p.fillPath(path, DEFAULT_VERTEX_FILL_COLOR)
+                    p.fillPath(path, POINT_COLOR)
 
         if self.mode == CANVAS_CREATE_MODE:
             if (self._bbox_sx is None) and \
@@ -703,7 +698,7 @@ class Canvas(QWidget):
                 p.drawLine(0, int(self._my), int(self.pixmap.width()), int(self._my))
             if (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
-                p.setPen(DEFAULT_LINE_COLOR)
+                p.setPen(BBOX_COLOR)
                 p.setBrush(QBrush(Qt.BrushStyle.BDiagPattern))
                 p.drawRect(int(min(self._bbox_sx, self._mx)),
                            int(min(self._bbox_sy, self._my)),
