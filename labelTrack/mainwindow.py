@@ -18,7 +18,7 @@ from labelTrack.defines import *
 
 
 BBOX_COLOR              = QColor(  0, 255,   0, 128)
-BBOX_HIGHLIGHTED_COLOR  = QColor(255, 255, 255, 255)
+BBOX_HIGHLIGHTED_COLOR  = QColor(255,   0,   0, 255)
 POINT_COLOR             = QColor(  0, 255,   0, 255)
 POINT_HIGHLIGHTED_COLOR = QColor(255,   0,   0, 255)
 
