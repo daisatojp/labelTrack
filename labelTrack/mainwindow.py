@@ -74,7 +74,6 @@ class MainWindow(QMainWindow):
         self.file_dock.setWidget(self.img_list_widget)
 
         self.canvas = Canvas(parent=self)
-        self.canvas.set_drawing_color(DEFAULT_LINE_COLOR)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidget(self.canvas)
@@ -541,6 +540,7 @@ class Canvas(QWidget):
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
         self.pixmap = QPixmap()
+        self.bbox: Optional[BBox] = None
 
         self._mx: Optional[float] = None
         self._my: Optional[float] = None
@@ -550,8 +550,6 @@ class Canvas(QWidget):
         self.shape = None
         self.current = None
         self.selected_shape = None
-        self.drawing_line_color = QColor(0, 0, 255)
-        self.drawing_rect_color = QColor(0, 0, 255)
         self.line = Shape()
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
@@ -612,7 +610,6 @@ class Canvas(QWidget):
                 w = abs(self._bbox_sx - mx)
                 h = abs(self._bbox_sy - my)
                 self.p.status_label.setText(f'W: {w:.2f}, H: {h:.2f} / X: {mx:.2f}; Y: {my:.2f}')
-                color = self.drawing_line_color
                 if not self.__in_pixmap(pos.x(), pos.y()):
                     size = self.pixmap.size()
                     clipped_x = min(max(0, pos.x()), size.width())
@@ -622,11 +619,10 @@ class Canvas(QWidget):
                     # Attract line to starting point and colorise to alert the
                     # user:
                     pos = self.current[0]
-                    color = self.current.line_color
                     self.override_cursor(CURSOR_POINT)
                     self.current.highlight_vertex(0, Shape.NEAR_VERTEX)
                 self.line[1] = pos
-                self.line.line_color = color
+                self.line.line_color = DEFAULT_LINE_COLOR
                 self.prev_point = QPointF()
                 self.current.highlight_clear()
             else:
@@ -757,7 +753,7 @@ class Canvas(QWidget):
                 p.drawLine(0, int(self._my), int(self.pixmap.width()), int(self._my))
             if (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
-                p.setPen(self.drawing_rect_color)
+                p.setPen(DEFAULT_LINE_COLOR)
                 p.setBrush(QBrush(Qt.BrushStyle.BDiagPattern))
                 p.drawRect(int(min(self._bbox_sx, self._mx)),
                            int(min(self._bbox_sy, self._my)),
@@ -789,10 +785,6 @@ class Canvas(QWidget):
         if self.pixmap:
             return self.scale * self.pixmap.size()
         return super(Canvas, self).minimumSizeHint()
-
-    def set_drawing_color(self, qcolor):
-        self.drawing_line_color = qcolor
-        self.drawing_rect_color = qcolor
 
     def set_editing(self, value=True):
         self.mode = CANVAS_EDIT_MODE if value else CANVAS_CREATE_MODE
