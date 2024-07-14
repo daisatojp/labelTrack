@@ -69,14 +69,9 @@ class MainWindow(QMainWindow):
 
         self.img_list_widget = QListWidget()
         self.img_list_widget.currentItemChanged.connect(self.file_current_item_changed)
-        file_list_layout = QVBoxLayout()
-        file_list_layout.setContentsMargins(0, 0, 0, 0)
-        file_list_layout.addWidget(self.img_list_widget)
-        file_list_container = QWidget()
-        file_list_container.setLayout(file_list_layout)
         self.file_dock = QDockWidget('Image List', self)
         self.file_dock.setObjectName('images')
-        self.file_dock.setWidget(file_list_container)
+        self.file_dock.setWidget(self.img_list_widget)
 
         self.canvas = Canvas(parent=self)
         self.canvas.set_drawing_color(DEFAULT_LINE_COLOR)
