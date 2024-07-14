@@ -610,7 +610,7 @@ class Canvas(QWidget):
             if self.mode == CANVAS_EDIT_MODE:
                 if (self._highlighted_bbox) or \
                    (self._highlighted_pidx is not None):
-                    self.__override_cursor(Qt.CursorShape.OpenHandCursor)
+                    self.__override_cursor(Qt.CursorShape.PointingHandCursor)
 
         self.update()
 
