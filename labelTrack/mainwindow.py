@@ -93,26 +93,6 @@ class BBox:
         return f'{self.x:.2f},{self.y:.2f},{self.w:.2f},{self.h:.2f}'
 
 
-class Shape:
-
-    line_color = DEFAULT_LINE_COLOR
-    select_line_color = DEFAULT_SELECT_LINE_COLOR
-    select_fill_color = DEFAULT_SELECT_FILL_COLOR
-    vertex_fill_color = DEFAULT_VERTEX_FILL_COLOR
-    h_vertex_fill_color = DEFAULT_HVERTEX_FILL_COLOR
-    point_size = 8
-    scale = 1.0
-
-    def __init__(self):
-        self.bbox = BBox()
-
-    def nearest_vertex(self, point, epsilon):
-        for i in range(4):
-            if distance(self.bbox[i] - point) <= epsilon:
-                return i
-        return None
-
-
 class MainWindow(QMainWindow):
 
     def __init__(self,
@@ -267,21 +247,11 @@ class MainWindow(QMainWindow):
 
     def update_shape(self):
         idx = self.img_list.currentRow()
-        bbox = self._bboxes[idx]
-        if not bbox.empty():
-            shape = Shape()
-            shape.bbox = bbox
-            shape.line_color = QColor(227, 79, 208, 100)
-            self.canvas.load_shape(shape)
-        else:
-            self.canvas.load_shape(None)
+        self.canvas.bbox = self._bboxes[idx]
 
     def update_bbox_list_by_canvas(self):
         idx = self.img_list.currentRow()
-        if self.canvas.shape is not None:
-            self._bboxes[idx] = self.canvas.shape.bbox
-        else:
-            self._bboxes[idx] = BBox()
+        self._bboxes[idx] = self.canvas.bbox
         self.set_dirty(True)
 
     def set_dirty(self, dirty: bool) -> None:
@@ -381,7 +351,7 @@ class MainWindow(QMainWindow):
         self.create_bbox_action.setEnabled(False)
 
     def __delete_bbox(self):
-        self.canvas.shape = None
+        self.canvas.bbox = BBox()
         self.update_bbox_list_by_canvas()
         self.canvas.update()
 
@@ -548,7 +518,7 @@ class Canvas(QWidget):
         self.p = parent
         self.mode = CANVAS_EDIT_MODE
         self.pixmap: Optional[QPixmap] = None
-        self.bbox: Optional[BBox] = None
+        self.bbox: BBox = BBox()
 
         self._painter = QPainter()
         self._cursor = CURSOR_DEFAULT
@@ -558,8 +528,6 @@ class Canvas(QWidget):
         self._bbox_sy: Optional[float] = None
         self._highlighted_bbox: bool = False
         self._highlighted_pidx: Optional[int] = None
-
-        self.shape = None
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
@@ -575,24 +543,28 @@ class Canvas(QWidget):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         key = event.key()
         if   key == Qt.Key.Key_Left:
-            if self.shape is not None:
-                bbox = self.shape.bbox
+            if not self.bbox.empty():
+                bbox = self.bbox
                 bbox.move(-1.0, 0.0)
+                self.bbox = bbox
                 self.p.set_dirty(True)
         elif key == Qt.Key.Key_Right:
-            if self.shape is not None:
-                bbox = self.shape.bbox
+            if not self.bbox.empty():
+                bbox = self.bbox
                 bbox.move(+1.0, 0.0)
+                self.bbox = bbox
                 self.p.set_dirty(True)
         elif key == Qt.Key.Key_Up:
-            if self.shape is not None:
-                bbox = self.shape.bbox
+            if not self.bbox.empty():
+                bbox = self.bbox
                 bbox.move(0.0, -1.0)
+                self.bbox = bbox
                 self.p.set_dirty(True)
         elif key == Qt.Key.Key_Down:
-            if self.shape is not None:
-                bbox = self.shape.bbox
+            if not self.bbox.empty():
+                bbox = self.bbox
                 bbox.move(0.0, +1.0)
+                self.bbox = bbox
                 self.p.set_dirty(True)
 
     def leaveEvent(self, event: QEvent) -> None:
@@ -629,15 +601,15 @@ class Canvas(QWidget):
             self.p.update_bbox_list_by_canvas()
             return
 
-        if self.shape is not None:
-            index = self.shape.nearest_vertex(pos, self.epsilon)
+        if not self.bbox.empty():
+            index = self.__nearest_vertex(pos, self.epsilon)
             if index is not None:
                 self._highlighted_bbox = False
                 self._highlighted_pidx = index
                 self.override_cursor(CURSOR_POINT)
                 self.setStatusTip(self.toolTip())
-            elif (self.shape.bbox.xmin() <= pos.x() <= self.shape.bbox.xmax()) and \
-                 (self.shape.bbox.ymin() <= pos.y() <= self.shape.bbox.ymax()):
+            elif (self.bbox.xmin() <= pos.x() <= self.bbox.xmax()) and \
+                 (self.bbox.ymin() <= pos.y() <= self.bbox.ymax()):
                 self._highlighted_bbox = True
                 self._highlighted_pidx = None
                 self.override_cursor(CURSOR_GRAB)
@@ -668,12 +640,13 @@ class Canvas(QWidget):
             return
 
         pos = self.__transform_pos(event.pos())
-        if   event.button() == Qt.MouseButton.LeftButton and self.selected_shape:
-            if self._highlighted_pidx is not None:
-                self.override_cursor(CURSOR_POINT)
-            else:
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            if (self._highlighted_bbox) or \
+               (self._highlighted_pidx is not None):
                 self.override_cursor(CURSOR_GRAB)
-        elif event.button() == Qt.MouseButton.LeftButton:
+            else:
+                self.override_cursor(CURSOR_POINT)
             if (self.mode == CANVAS_CREATE_MODE) and \
                (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
@@ -681,8 +654,7 @@ class Canvas(QWidget):
                 y1 = self._bbox_sy
                 x2 = pos.x()
                 y2 = pos.y()
-                self.shape = Shape()
-                self.shape.bbox = BBox(
+                self.bbox = BBox(
                     x=min(x1, x2),
                     y=min(y1, y2),
                     w=abs(x2 - x1),
@@ -701,6 +673,7 @@ class Canvas(QWidget):
             return
 
         scale = self.__scale()
+        point_size_base: float = 8.0
 
         p = self._painter
         p.begin(self)
@@ -711,35 +684,33 @@ class Canvas(QWidget):
 
         p.drawPixmap(0, 0, self.pixmap)
 
-        if self.shape is not None:
-            bbox = self.shape.bbox
-            if not bbox.empty():
-                color = self.shape.select_line_color if self._highlighted_bbox else self.shape.line_color
-                pen = QPen(color)
-                pen.setWidth(max(1, int(round(2.0 / scale))))
-                p.setPen(pen)
+        if not self.bbox.empty():
+            color = DEFAULT_SELECT_LINE_COLOR if self._highlighted_bbox else DEFAULT_LINE_COLOR
+            pen = QPen(color)
+            pen.setWidth(max(1, int(round(2.0 / scale))))
+            p.setPen(pen)
 
-                line_path = QPainterPath()
-                vertex_path = QPainterPath()
+            line_path = QPainterPath()
+            vertex_path = QPainterPath()
 
-                line_path.moveTo(self.shape.bbox[0])
-                for pidx in range(4):
-                    point = self.shape.bbox[pidx]
-                    line_path.lineTo(point)
-                    d = self.shape.point_size / scale
-                    if pidx == self._highlighted_pidx:
-                        d *= 4.0
-                        vertex_path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
-                        self.vertex_fill_color = self.shape.h_vertex_fill_color
-                    else:
-                        d *= 1.5
-                        vertex_path.addEllipse(point, d / 2.0, d / 2.0)
-                        self.vertex_fill_color = Shape.vertex_fill_color
-                line_path.lineTo(self.shape.bbox[0])
-                p.drawPath(line_path)
-                p.drawPath(vertex_path)
-                p.fillPath(vertex_path, self.vertex_fill_color)
-        
+            line_path.moveTo(self.bbox[0])
+            for pidx in range(4):
+                point = self.bbox[pidx]
+                line_path.lineTo(point)
+                d = point_size_base / scale
+                if pidx == self._highlighted_pidx:
+                    d *= 4.0
+                    vertex_path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
+                    self.vertex_fill_color = DEFAULT_HVERTEX_FILL_COLOR
+                else:
+                    d *= 1.5
+                    vertex_path.addEllipse(point, d / 2.0, d / 2.0)
+                    self.vertex_fill_color = DEFAULT_VERTEX_FILL_COLOR
+            line_path.lineTo(self.bbox[0])
+            p.drawPath(line_path)
+            p.drawPath(vertex_path)
+            p.fillPath(vertex_path, self.vertex_fill_color)
+
         if self.mode == CANVAS_CREATE_MODE:
             if (self._bbox_sx is None) and \
                (self._bbox_sy is None) and \
@@ -796,10 +767,6 @@ class Canvas(QWidget):
         self.pixmap = pixmap
         self.repaint()
 
-    def load_shape(self, shape):
-        self.shape = shape
-        self.repaint()
-
     def current_cursor(self):
         cursor = QApplication.overrideCursor()
         if cursor is not None:
@@ -842,3 +809,9 @@ class Canvas(QWidget):
     def __in_pixmap(self, x: int | float, y: int | float) -> bool:
         w, h = self.pixmap.width(), self.pixmap.height()
         return (0 <= x <= w) and (0 <= y <= h)
+
+    def __nearest_vertex(self, point: QPointF, eps: float) -> Optional[int]:
+        for i in range(4):
+            if distance(self.bbox[i] - point) <= eps:
+                return i
+        return None
