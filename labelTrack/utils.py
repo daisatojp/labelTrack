@@ -1,4 +1,3 @@
-from math import sqrt
 import os
 import os.path as osp
 import re
@@ -6,10 +5,6 @@ import sys
 from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
-
-
-def distance(p):
-    return sqrt(p.x() * p.x() + p.y() * p.y())
 
 
 def natural_sort(list, key=lambda s:s):
