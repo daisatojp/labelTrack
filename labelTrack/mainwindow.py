@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import partial
 import os.path as osp
+from typing import Callable
 from typing import Optional
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -97,80 +98,32 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
         self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
-        self.quit_action = QAction('Quit', self)
-        self.quit_action.setIcon(read_icon('quit'))
-        self.quit_action.setShortcut('Ctrl+Q')
-        self.quit_action.triggered.connect(self.close)
-        self.open_image_dir_action = QAction('Open Image Dir', self)
-        self.open_image_dir_action.setIcon(read_icon('open'))
-        self.open_image_dir_action.triggered.connect(self.open_image_dir_dialog)
-        self.open_label_file_action = QAction('Open Label File', self)
-        self.open_label_file_action.setIcon(read_icon('open'))
-        self.open_label_file_action.triggered.connect(self.open_label_file_dialog)
-        self.next_image_action = QAction('Next Image', self)
-        self.next_image_action.setIcon(read_icon('next'))
-        self.next_image_action.setShortcut('d')
-        self.next_image_action.triggered.connect(self.open_next_image)
-        self.prev_image_action = QAction('Previous Image', self)
-        self.prev_image_action.setIcon(read_icon('prev'))
-        self.prev_image_action.setShortcut('a')
-        self.prev_image_action.triggered.connect(self.open_prev_image)
-        self.save_action = QAction('Save', self)
-        self.save_action.setIcon(read_icon('save'))
-        self.save_action.setShortcut('Ctrl+s')
-        self.save_action.triggered.connect(self.__save_label_file)
-        self.create_bbox_action = QAction('Create BBox', self)
-        self.create_bbox_action.setIcon(read_icon('objects'))
-        self.create_bbox_action.setShortcut('w')
-        self.create_bbox_action.triggered.connect(self.__create_bbox)
-        self.delete_bbox_action = QAction('Delete BBox', self)
-        self.delete_bbox_action.setIcon(read_icon('close'))
-        self.delete_bbox_action.setShortcut('c')
-        self.delete_bbox_action.triggered.connect(self.__delete_bbox)
-        self.copy_bbox_action = QAction('Copy BBox', self)
-        self.copy_bbox_action.setIcon(read_icon('copy'))
-        self.copy_bbox_action.setShortcut('r')
-        self.copy_bbox_action.triggered.connect(self.__copy_bbox)
-        self.next_image_and_copy_action = QAction('Next Image and Copy', self)
-        self.next_image_and_copy_action.setIcon(read_icon('next'))
-        self.next_image_and_copy_action.setShortcut('t')
-        self.next_image_and_copy_action.triggered.connect(self.next_image_and_copy)
-        self.next_image_and_delete_action = QAction('Next Image and Delete', self)
-        self.next_image_and_delete_action.setIcon(read_icon('next'))
-        self.next_image_and_delete_action.setShortcut('v')
-        self.next_image_and_delete_action.triggered.connect(self.next_image_and_delete)
-        self.show_info_action = QAction('info', self)
-        self.show_info_action.setIcon(read_icon('help'))
-        self.show_info_action.triggered.connect(self.show_info_dialog)
-        self.auto_saving_action = QAction('autoSaveMode', self)
-        self.auto_saving_action.setCheckable(True)
-        self.auto_saving_action.setChecked(settings.get(SETTINGS_KEY_AUTO_SAVE, True))
+        self.quit_action = self.__new_action('Quit', icon_file='quit', slot=self.close, shortcut='Ctrl+Q')
+        self.open_image_dir_action = self.__new_action('Open Image Dir', icon_file='open', slot=self.__open_image_dir_dialog)
+        self.open_label_file_action = self.__new_action('Open Label File', icon_file='open', slot=self.__open_label_file_dialog)
+        self.next_image_action = self.__new_action('Next Image', icon_file='next', slot=self.__open_next_image, shortcut='d')
+        self.prev_image_action = self.__new_action('Previous Image', icon_file='prev', slot=self.__open_prev_image, shortcut='a')
+        self.save_action = self.__new_action('Save', icon_file='save', slot=self.__save_label_file, shortcut='Ctrl+s')
+        self.create_bbox_action = self.__new_action('Create BBox', icon_file='objects', slot=self.__create_bbox, shortcut='w')
+        self.delete_bbox_action = self.__new_action('Delete BBox', icon_file='close', slot=self.__delete_bbox, shortcut='c')
+        self.copy_bbox_action = self.__new_action('Copy BBox', icon_file='copy', slot=self.__copy_bbox, shortcut='r')
+        self.next_image_and_copy_action = self.__new_action('Next Image and Copy', icon_file='next', slot=self.__next_image_and_copy, shortcut='t')
+        self.show_info_action = self.__new_action('info', icon_file='help', slot=self.__show_info_dialog)
+        self.auto_saving_action = self.__new_action('Auto Save Mode', checkable=True, checked=settings.get(SETTINGS_KEY_AUTO_SAVE, False))
         self.zoom_spinbox = QSpinBox()
         self.zoom_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.zoom_spinbox.setRange(1, 500)
         self.zoom_spinbox.setSuffix(' %')
         self.zoom_spinbox.setValue(100)
-        self.zoom_spinbox.setToolTip(u'Zoom Level')
+        self.zoom_spinbox.setToolTip('Zoom Level')
         self.zoom_spinbox.setStatusTip(self.toolTip())
         self.zoom_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.zoom_spinbox.setEnabled(True)
         self.zoom_spinbox.valueChanged.connect(self.paint_canvas)
-        self.zoom_in_action = QAction('Zoom In', self)
-        self.zoom_in_action.setIcon(read_icon('zoom-in'))
-        self.zoom_in_action.setShortcut('Ctrl++')
-        self.zoom_in_action.triggered.connect(partial(self.__add_zoom, 10))
-        self.zoom_out_action = QAction('Zoom Out', self)
-        self.zoom_out_action.setIcon(read_icon('zoom-out'))
-        self.zoom_out_action.setShortcut('Ctrl+-')
-        self.zoom_out_action.triggered.connect(partial(self.__add_zoom, -10))
-        self.zoom_org_action = QAction('Original Size', self)
-        self.zoom_org_action.setIcon(read_icon('zoom'))
-        self.zoom_org_action.setShortcut('Ctrl+=')
-        self.zoom_org_action.triggered.connect(self.__reset_zoom)
-        self.fit_window_action = QAction('Fit Window', self)
-        self.fit_window_action.setIcon(read_icon('fit-window'))
-        self.fit_window_action.setShortcut('Ctrl+F')
-        self.fit_window_action.triggered.connect(self.__set_fit_window)
+        self.zoom_in_action = self.__new_action('Zoom In', icon_file='zoom-in', slot=partial(self.__add_zoom, 10), shortcut='Ctrl++')
+        self.zoom_out_action = self.__new_action('Zoom Out', icon_file='zoom-out', slot=partial(self.__add_zoom, -10), shortcut='Ctrl+-')
+        self.zoom_org_action = self.__new_action('Original Size', icon_file='zoom', slot=self.__reset_zoom, shortcut='Ctrl+=')
+        self.fit_window_action = self.__new_action('Fit Window', icon_file='fit-window', slot=self.__set_fit_window, shortcut='Ctrl+F')
         self.menus_file = self.menuBar().addMenu('File')
         self.menus_edit = self.menuBar().addMenu('Edit')
         self.menus_view = self.menuBar().addMenu('View')
@@ -185,7 +138,6 @@ class MainWindow(QMainWindow):
         self.menus_edit.addAction(self.delete_bbox_action)
         self.menus_edit.addAction(self.copy_bbox_action)
         self.menus_edit.addAction(self.next_image_and_copy_action)
-        self.menus_edit.addAction(self.next_image_and_delete_action)
         self.menus_view.addAction(self.auto_saving_action)
         self.menus_view.addSeparator()
         self.menus_view.addAction(self.zoom_in_action)
@@ -255,64 +207,6 @@ class MainWindow(QMainWindow):
 
     def file_current_item_changed(self, item=None):
         self.__load_image()
-
-    def open_image_dir_dialog(self):
-        if not self.may_continue():
-            return
-        default_image_dir = '.'
-        if self._image_dir and osp.exists(self._image_dir):
-            default_image_dir = self._image_dir
-        target_image_dir = QFileDialog.getExistingDirectory(
-            self, f'{__appname__} - Open Image Directory', default_image_dir,
-            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
-        self.__load_image_dir(target_image_dir)
-
-    def open_label_file_dialog(self):
-        default_label_path = '.'
-        if self._label_file is not None:
-            default_label_path = self._label_file
-        target_file_path = QFileDialog.getSaveFileName(
-            self, f'{__appname__} - Save label to the file',
-            osp.dirname(default_label_path), 'Text (*.txt)',
-            None, QFileDialog.Option.DontConfirmOverwrite)
-        if target_file_path is not None and len(target_file_path) > 1:
-            self.__load_label_file(target_file_path[0])
-        self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
-        self.statusBar().show()
-
-    def open_prev_image(self):
-        cnt = self.img_list.count()
-        idx = self.img_list.currentRow()
-        if self.auto_saving_action.isChecked():
-            self.__save_label_file()
-        if cnt <= 0:
-            return
-        if 0 <= idx - 1:
-            idx -= 1
-            self.img_list.setCurrentRow(idx)
-        self.__load_image()
-
-    def open_next_image(self):
-        cnt = self.img_list.count()
-        idx = self.img_list.currentRow()
-        if self.auto_saving_action.isChecked():
-            self.__save_label_file()
-        if idx + 1 < cnt:
-            idx += 1
-            self.img_list.setCurrentRow(idx)
-        self.__load_image()
-
-    def next_image_and_copy(self):
-        self.open_next_image()
-        self.__copy_bbox()
-
-    def next_image_and_delete(self):
-        self.open_next_image()
-        self.__delete_bbox()
-
-    def show_info_dialog(self):
-        msg = f'Name:{__appname__} \nApp Version:{__version__}'
-        QMB.information(self, 'Information', msg)
 
     def paint_canvas(self):
         if self.image.isNull():
@@ -401,6 +295,64 @@ class MainWindow(QMainWindow):
     def scroll_request(self, delta: int | float, orientation: Qt.Orientation) -> None:
         bar = self.scroll_bars[orientation]
         bar.setValue(int(bar.value() + bar.singleStep() * (-delta / 120)))
+
+    def __open_image_dir_dialog(self):
+        if not self.may_continue():
+            return
+        default_image_dir = '.'
+        if self._image_dir and osp.exists(self._image_dir):
+            default_image_dir = self._image_dir
+        target_image_dir = QFileDialog.getExistingDirectory(
+            self, f'{__appname__} - Open Image Directory', default_image_dir,
+            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
+        self.__load_image_dir(target_image_dir)
+
+    def __open_label_file_dialog(self):
+        default_label_path = '.'
+        if self._label_file is not None:
+            default_label_path = self._label_file
+        target_file_path = QFileDialog.getSaveFileName(
+            self, f'{__appname__} - Save label to the file',
+            osp.dirname(default_label_path), 'Text (*.txt)',
+            None, QFileDialog.Option.DontConfirmOverwrite)
+        if target_file_path is not None and len(target_file_path) > 1:
+            self.__load_label_file(target_file_path[0])
+        self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
+        self.statusBar().show()
+
+    def __open_prev_image(self):
+        cnt = self.img_list.count()
+        idx = self.img_list.currentRow()
+        if self.auto_saving_action.isChecked():
+            self.__save_label_file()
+        if cnt <= 0:
+            return
+        if 0 <= idx - 1:
+            idx -= 1
+            self.img_list.setCurrentRow(idx)
+        self.__load_image()
+
+    def __open_next_image(self):
+        cnt = self.img_list.count()
+        idx = self.img_list.currentRow()
+        if self.auto_saving_action.isChecked():
+            self.__save_label_file()
+        if idx + 1 < cnt:
+            idx += 1
+            self.img_list.setCurrentRow(idx)
+        self.__load_image()
+
+    def __next_image_and_copy(self):
+        self.__open_next_image()
+        self.__copy_bbox()
+
+    def __next_image_and_delete(self):
+        self.__open_next_image()
+        self.__delete_bbox()
+
+    def __show_info_dialog(self):
+        msg = f'Name:{__appname__} \nApp Version:{__version__}'
+        QMB.information(self, 'Information', msg)
 
     def __create_bbox(self):
         if self.image.isNull():
@@ -509,6 +461,28 @@ class MainWindow(QMainWindow):
         h2 = self.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a1 <= a2 else h1 / h2
+    
+    def __new_action(
+            self,
+            text: str,
+            icon_file: Optional[str] = None,
+            slot: Optional[Callable] = None,
+            shortcut: Optional[str] = None,
+            checkable: bool = False,
+            checked: bool = False
+            ) -> QAction:
+        action = QAction(text, self)
+        if icon_file is not None:
+            action.setIcon(read_icon(icon_file))
+        if slot is not None:
+            action.triggered.connect(slot)
+        if shortcut is not None:
+            action.setShortcut(shortcut)
+        if checkable:
+            action.setCheckable(True)
+            action.setChecked(checked)
+        return action
+
 
 class ToolBar(QToolBar):
 
