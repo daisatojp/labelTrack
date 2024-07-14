@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.zoom_spinbox.setStatusTip(self.toolTip())
         self.zoom_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.zoom_spinbox.setEnabled(True)
-        self.zoom_spinbox.valueChanged.connect(self.paint_canvas)
+        self.zoom_spinbox.valueChanged.connect(self.__zoom_value_changed)
         self.zoom_in_action = self.__new_action('Zoom In', icon_file='zoom-in', slot=partial(self.__add_zoom, 10), shortcut='Ctrl++')
         self.zoom_out_action = self.__new_action('Zoom Out', icon_file='zoom-out', slot=partial(self.__add_zoom, -10), shortcut='Ctrl+-')
         self.zoom_org_action = self.__new_action('Original Size', icon_file='zoom', slot=self.__reset_zoom, shortcut='Ctrl+=')
@@ -164,7 +164,6 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.fit_window_action)
         self.statusBar().showMessage(f'{__appname__} started.')
         self.statusBar().show()
-        self.zoom_level = 100
 
         window_x = settings.get(SETTINGS_KEY_WINDOW_X, 0)
         window_y = settings.get(SETTINGS_KEY_WINDOW_Y, 0)
@@ -206,13 +205,6 @@ class MainWindow(QMainWindow):
 
     def file_current_item_changed(self, item=None):
         self.__load_image()
-
-    def paint_canvas(self):
-        if self.canvas.pixmap is None:
-            return
-        self.canvas.scale = 0.01 * self.zoom_spinbox.value()
-        self.canvas.adjustSize()
-        self.canvas.update()
 
     def may_continue(self):
         if not self._dirty:
@@ -345,10 +337,6 @@ class MainWindow(QMainWindow):
         self.__open_next_image()
         self.__copy_bbox()
 
-    def __next_image_and_delete(self):
-        self.__open_next_image()
-        self.__delete_bbox()
-
     def __show_info_dialog(self):
         msg = f'Name:{__appname__} \nApp Version:{__version__}'
         QMB.information(self, 'Information', msg)
@@ -394,12 +382,12 @@ class MainWindow(QMainWindow):
         self.set_dirty(False)
         self.canvas.setEnabled(True)
         self.__set_fit_window()
-        self.paint_canvas()
         idx = self.img_list.currentRow()
         cnt = self.img_list.count()
         counter = f'[{idx + 1} / {cnt}]'
         self.setWindowTitle(f'{__appname__} {file_path} {counter}')
         self.canvas.setFocus()
+        self.canvas.update()
 
     def __load_image_dir(self, image_dir: Optional[str]) -> None:
         if not self.may_continue():
@@ -459,7 +447,13 @@ class MainWindow(QMainWindow):
         h2 = self.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a1 <= a2 else h1 / h2
-    
+
+    def __zoom_value_changed(self):
+        if self.canvas.pixmap is None:
+            return
+        self.canvas.adjustSize()
+        self.canvas.update()
+
     def __new_action(
             self,
             text: str,
@@ -535,7 +529,6 @@ class Canvas(QWidget):
         self.line = Shape()
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
-        self.scale = 1.0
         self.h_shape = None
         self.h_vertex = None
         self._painter = QPainter()
@@ -720,16 +713,17 @@ class Canvas(QWidget):
             super(Canvas, self).paintEvent(event)
             return
 
+        scale = self.__scale()
+
         p = self._painter
         p.begin(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-
-        p.scale(self.scale, self.scale)
+        p.scale(scale, scale)
         p.translate(self.__offset_to_center())
 
         p.drawPixmap(0, 0, self.pixmap)
-        Shape.scale = self.scale
+        Shape.scale = scale
         if self.shape is not None:
             self.shape.paint(p)
         
@@ -772,7 +766,7 @@ class Canvas(QWidget):
 
     def minimumSizeHint(self):
         if self.pixmap:
-            return self.scale * self.pixmap.size()
+            return self.__scale() * self.pixmap.size()
         return super(Canvas, self).minimumSizeHint()
 
     def set_editing(self, value=True):
@@ -978,18 +972,21 @@ class Canvas(QWidget):
 
     def __transform_pos(self, point: QPoint) -> QPointF:
         pointf = QPointF(point.x(), point.y())
-        return pointf / self.scale - self.__offset_to_center()
+        return pointf / self.__scale() - self.__offset_to_center()
 
     def __offset_to_center(self) -> QPointF:
-        s = self.scale
+        scale = self.__scale()
         area = super(Canvas, self).size()
-        w = self.pixmap.width() * s
-        h = self.pixmap.height() * s
+        w = self.pixmap.width() * scale
+        h = self.pixmap.height() * scale
         aw = area.width()
         ah = area.height()
-        x = (aw - w) / (2 * s) if aw > w else 0
-        y = (ah - h) / (2 * s) if ah > h else 0
+        x = (aw - w) / (2 * scale) if (w < aw) else 0
+        y = (ah - h) / (2 * scale) if (h < ah) else 0
         return QPointF(x, y)
+
+    def __scale(self) -> float:
+        return 0.01 * self.p.zoom_spinbox.value()
 
     def __in_pixmap(self, x: int | float, y: int | float) -> bool:
         w, h = self.pixmap.width(), self.pixmap.height()
