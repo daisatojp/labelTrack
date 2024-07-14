@@ -16,6 +16,9 @@ from labelTrack.utils import scan_all_images
 from labelTrack.utils import read_icon
 
 
+BBOX_COLOR             = QColor(  0, 255,   0, 128)
+BBOX_HIGHLIGHTED_COLOR = QColor(255, 255, 255, 255)
+
 DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
 DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
 DEFAULT_SELECT_LINE_COLOR = QColor(255, 255, 255)
@@ -662,31 +665,34 @@ class Canvas(QWidget):
         p.drawPixmap(0, 0, self.pixmap)
 
         if not self.bbox.empty():
-            color = DEFAULT_SELECT_LINE_COLOR if self._highlighted_bbox else DEFAULT_LINE_COLOR
-            pen = QPen(color)
-            pen.setWidth(max(1, int(round(2.0 / scale))))
-            p.setPen(pen)
-
             line_path = QPainterPath()
-            vertex_path = QPainterPath()
-
             line_path.moveTo(self.bbox.get_point(0))
             for pidx in range(4):
+                line_path.lineTo(self.bbox.get_point(pidx))
+            line_path.lineTo(self.bbox.get_point(0))
+            if self._highlighted_bbox:
+                pen = QPen(BBOX_HIGHLIGHTED_COLOR)
+            else:
+                pen = QPen(BBOX_COLOR)
+            pen.setWidth(max(1, int(round(2.0 / scale))))
+            p.setPen(pen)
+            p.drawPath(line_path)
+
+            for pidx in range(4):
                 point = self.bbox.get_point(pidx)
-                line_path.lineTo(point)
                 d = point_size_base / scale
                 if pidx == self._highlighted_pidx:
                     d *= 1.0
-                    vertex_path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
-                    self.vertex_fill_color = DEFAULT_HVERTEX_FILL_COLOR
+                    path = QPainterPath()
+                    path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
+                    p.drawPath(path)
+                    p.fillPath(path, DEFAULT_HVERTEX_FILL_COLOR)
                 else:
                     d *= 1.0
-                    vertex_path.addEllipse(point, d / 2.0, d / 2.0)
-                    self.vertex_fill_color = DEFAULT_VERTEX_FILL_COLOR
-            line_path.lineTo(self.bbox.get_point(0))
-            p.drawPath(line_path)
-            p.drawPath(vertex_path)
-            p.fillPath(vertex_path, self.vertex_fill_color)
+                    path = QPainterPath()
+                    path.addEllipse(point, d / 2.0, d / 2.0)
+                    p.drawPath(path)
+                    p.fillPath(path, DEFAULT_VERTEX_FILL_COLOR)
 
         if self.mode == CANVAS_CREATE_MODE:
             if (self._bbox_sx is None) and \
