@@ -53,17 +53,39 @@ class BBox:
 
     def ymax(self) -> float:
         return self.y + self.h
+    
+    def move(self, dx: float, dy: float) -> None:
+        self.x += dx
+        self.y += dy
+
+    def get_vertex(self, idx: int) -> tuple[float, float]:
+        if idx == 0:
+            return self.x, self.y
+        if idx == 1:
+            return self.x + self.w, self.y
+        if idx == 2:
+            return self.x + self.w, self.y + self.h
+        if idx == 3:
+            return self.x, self.y + self.h
+        raise IndexError()
+
+    def set_vertex(self, idx: int, x: float, y: float) -> None:
+        x1, y1 = (x, y) if idx == 0 else self.get_vertex(0)
+        x2, y2 = (x, y) if idx == 1 else self.get_vertex(1)
+        x3, y3 = (x, y) if idx == 2 else self.get_vertex(2)
+        x4, y4 = (x, y) if idx == 3 else self.get_vertex(3)
+        xmin = min(x1, x2, x3, x4)
+        ymin = min(y1, y2, y3, y4)
+        xmax = max(x1, x2, x3, x4)
+        ymax = max(y1, y2, y3, y4)
+        self.x = xmin
+        self.y = ymin
+        self.w = xmax - xmin
+        self.h = ymax - ymin
 
     def __getitem__(self, idx: int) -> QPointF:
-        if idx == 0:
-            return QPointF(self.x, self.y)
-        if idx == 1:
-            return QPointF(self.x + self.w, self.y)
-        if idx == 2:
-            return QPointF(self.x + self.w, self.y + self.h)
-        if idx == 3:
-            return QPointF(self.x, self.y + self.h)
-        raise IndexError()
+        x, y = self.get_vertex(idx)
+        return QPointF(x, y)
 
     def __str__(self) -> str:
         if self.empty():
@@ -86,7 +108,7 @@ class Shape:
     scale = 1.0
 
     def __init__(self):
-        self.points = []
+        self.bbox = BBox()
         self.selected = False
 
         self._highlight_index = None
@@ -96,17 +118,8 @@ class Shape:
             self.MOVE_VERTEX: (1.5, self.P_SQUARE),
         }
 
-    def reach_max_points(self):
-        if len(self.points) >= 4:
-            return True
-        return False
-
-    def add_point(self, point):
-        if not self.reach_max_points():
-            self.points.append(point)
-
     def paint(self, painter):
-        if self.points:
+        if not self.bbox.empty():
             color = self.select_line_color if self.selected else self.line_color
             pen = QPen(color)
             # Try using integer sizes for smoother drawing(?)
@@ -116,12 +129,12 @@ class Shape:
             line_path = QPainterPath()
             vertex_path = QPainterPath()
 
-            line_path.moveTo(self.points[0])
-            for i, p in enumerate(self.points):
-                line_path.lineTo(p)
+            line_path.moveTo(self.bbox[0])
+            for i in range(4):
+                point = self.bbox[i]
+                line_path.lineTo(point)
                 d = self.point_size / self.scale
                 shape = self.point_type
-                point = self.points[i]
                 if i == self._highlight_index:
                     size, shape = self._highlight_settings[self._highlight_mode]
                     d *= size
@@ -135,15 +148,15 @@ class Shape:
                     vertex_path.addEllipse(point, d / 2.0, d / 2.0)
                 else:
                     assert False, "unsupported vertex shape"
-            line_path.lineTo(self.points[0])
+            line_path.lineTo(self.bbox[0])
 
             painter.drawPath(line_path)
             painter.drawPath(vertex_path)
             painter.fillPath(vertex_path, self.vertex_fill_color)
 
     def nearest_vertex(self, point, epsilon):
-        for i, p in enumerate(self.points):
-            if distance(p - point) <= epsilon:
+        for i in range(4):
+            if distance(self.bbox[i] - point) <= epsilon:
                 return i
         return None
 
@@ -151,19 +164,20 @@ class Shape:
         return self.make_path().contains(point)
 
     def make_path(self):
-        path = QPainterPath(self.points[0])
-        for p in self.points[1:]:
-            path.lineTo(p)
+        path = QPainterPath(self.bbox[0])
+        for i in range(1, 4):
+            path.lineTo(self.bbox[i])
         return path
 
     def bounding_rect(self):
         return self.make_path().boundingRect()
 
     def move_by(self, offset):
-        self.points = [p + offset for p in self.points]
+        self.bbox.move(offset.x(), offset.y())
 
     def move_vertex_by(self, i, offset):
-        self.points[i] = self.points[i] + offset
+        p = self.bbox.get_vertex(i)
+        self.bbox.set_vertex(i, p[0] + offset.x(), p[1] + offset.y())
 
     def highlight_vertex(self, i, action):
         self._highlight_index = i
@@ -172,14 +186,8 @@ class Shape:
     def highlight_clear(self):
         self._highlight_index = None
 
-    def __len__(self):
-        return len(self.points)
-
     def __getitem__(self, key):
-        return self.points[key]
-
-    def __setitem__(self, key, value):
-        self.points[key] = value
+        return self.bbox[key]
 
 
 class MainWindow(QMainWindow):
@@ -344,25 +352,16 @@ class MainWindow(QMainWindow):
         bbox = self._bboxes[idx]
         if not bbox.empty():
             shape = Shape()
-            shape.add_point(QPointF(bbox.xmin(), bbox.ymin()))
-            shape.add_point(QPointF(bbox.xmax(), bbox.ymin()))
-            shape.add_point(QPointF(bbox.xmax(), bbox.ymax()))
-            shape.add_point(QPointF(bbox.xmin(), bbox.ymax()))
+            shape.bbox = bbox
             shape.line_color = QColor(227, 79, 208, 100)
-            shape.fill_color = QColor(227, 79, 208, 100)
             self.canvas.load_shape(shape)
         else:
             self.canvas.load_shape(None)
 
     def update_bbox_list_by_canvas(self):
         idx = self.img_list.currentRow()
-        s = self.canvas.shape
-        if s is not None:
-            pts = [(p.x(), p.y()) for p in s.points]
-            x1, y1, x2, y2 = pts[0][0], pts[0][1], pts[2][0], pts[2][1]
-            xmin, ymin, xmax, ymax = min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)
-            x, y, w, h = xmin, ymin, xmax - xmin, ymax - ymin
-            self._bboxes[idx] = BBox(x=x, y=y, w=w, h=h)
+        if self.canvas.shape is not None:
+            self._bboxes[idx] = self.canvas.shape.bbox
         else:
             self._bboxes[idx] = BBox()
         self.set_dirty(True)
@@ -795,15 +794,12 @@ class Canvas(QWidget):
                 y1 = self._bbox_sy
                 x2 = pos.x()
                 y2 = pos.y()
-                xmin = min(x1, x2)
-                ymin = min(y1, y2)
-                xmax = max(x1, x2)
-                ymax = max(y1, y2)
                 self.shape = Shape()
-                self.shape.add_point(QPointF(xmin, ymin))
-                self.shape.add_point(QPointF(xmax, ymin))
-                self.shape.add_point(QPointF(xmax, ymax))
-                self.shape.add_point(QPointF(xmin, ymax))
+                self.shape.bbox = BBox(
+                    x=min(x1, x2),
+                    y=min(y1, y2),
+                    w=abs(x2 - x1),
+                    h=abs(y2 - y1))
                 self.p.update_bbox_list_by_canvas()
                 self.set_editing(True)
                 self.p.create_bbox_action.setEnabled(True)
