@@ -59,30 +59,27 @@ class Shape:
             line_path.moveTo(self.points[0])
             for i, p in enumerate(self.points):
                 line_path.lineTo(p)
-                self.draw_vertex(vertex_path, i)
+                d = self.point_size / self.scale
+                shape = self.point_type
+                point = self.points[i]
+                if i == self._highlight_index:
+                    size, shape = self._highlight_settings[self._highlight_mode]
+                    d *= size
+                if self._highlight_index is not None:
+                    self.vertex_fill_color = self.h_vertex_fill_color
+                else:
+                    self.vertex_fill_color = Shape.vertex_fill_color
+                if shape == self.P_SQUARE:
+                    vertex_path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
+                elif shape == self.P_ROUND:
+                    vertex_path.addEllipse(point, d / 2.0, d / 2.0)
+                else:
+                    assert False, "unsupported vertex shape"
             line_path.lineTo(self.points[0])
 
             painter.drawPath(line_path)
             painter.drawPath(vertex_path)
             painter.fillPath(vertex_path, self.vertex_fill_color)
-
-    def draw_vertex(self, path, i):
-        d = self.point_size / self.scale
-        shape = self.point_type
-        point = self.points[i]
-        if i == self._highlight_index:
-            size, shape = self._highlight_settings[self._highlight_mode]
-            d *= size
-        if self._highlight_index is not None:
-            self.vertex_fill_color = self.h_vertex_fill_color
-        else:
-            self.vertex_fill_color = Shape.vertex_fill_color
-        if shape == self.P_SQUARE:
-            path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
-        elif shape == self.P_ROUND:
-            path.addEllipse(point, d / 2.0, d / 2.0)
-        else:
-            assert False, "unsupported vertex shape"
 
     def nearest_vertex(self, point, epsilon):
         for i, p in enumerate(self.points):
