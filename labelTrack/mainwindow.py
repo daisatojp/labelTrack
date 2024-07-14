@@ -123,8 +123,8 @@ class MainWindow(QMainWindow):
         self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         self.quit_action = self.__new_action('Quit', icon_file='quit', slot=self.close, shortcut='Ctrl+Q')
-        self.open_image_dir_action = self.__new_action('Open Image Dir', icon_file='open', slot=self.__open_image_dir_dialog)
-        self.open_label_file_action = self.__new_action('Open Label File', icon_file='open', slot=self.__open_label_file_dialog)
+        self.open_image_dir_action = self.__new_action('Open Image', icon_file='open', slot=self.__open_image_dir_dialog)
+        self.open_label_file_action = self.__new_action('Open Label', icon_file='open', slot=self.__open_label_file_dialog)
         self.next_image_action = self.__new_action('Next Image', icon_file='next', slot=self.__open_next_image, shortcut='d')
         self.prev_image_action = self.__new_action('Previous Image', icon_file='prev', slot=self.__open_prev_image, shortcut='a')
         self.save_action = self.__new_action('Save', icon_file='save', slot=self.__save_label_file, shortcut='Ctrl+s')
