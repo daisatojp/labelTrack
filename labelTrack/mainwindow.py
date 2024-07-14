@@ -16,12 +16,6 @@ from labelTrack.utils import scan_all_images
 from labelTrack.utils import read_icon
 
 
-CURSOR_DEFAULT = Qt.CursorShape.ArrowCursor
-CURSOR_POINT   = Qt.CursorShape.PointingHandCursor
-CURSOR_DRAW    = Qt.CursorShape.CrossCursor
-CURSOR_MOVE    = Qt.CursorShape.ClosedHandCursor
-CURSOR_GRAB    = Qt.CursorShape.OpenHandCursor
-
 DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
 DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
 DEFAULT_SELECT_LINE_COLOR = QColor(255, 255, 255)
@@ -512,7 +506,6 @@ class ToolButton(QToolButton):
 
 
 class Canvas(QWidget):
-    epsilon = 11.0
 
     def __init__(self, parent: MainWindow) -> None:
         super(Canvas, self).__init__(parent)
@@ -522,7 +515,7 @@ class Canvas(QWidget):
         self.bbox: BBox = BBox()
 
         self._painter = QPainter()
-        self._cursor = CURSOR_DEFAULT
+        self._cursor = Qt.CursorShape.ArrowCursor
         self._mx: Optional[float] = None
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
@@ -532,8 +525,6 @@ class Canvas(QWidget):
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
-
-        self.pan_initial_pos = QPoint()
 
     def enterEvent(self, event: QEnterEvent) -> None:
         self.__override_cursor(self._cursor)
@@ -576,34 +567,33 @@ class Canvas(QWidget):
         self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
 
         if event.buttons() == Qt.MouseButton.LeftButton:
-            if   self._highlighted_bbox:
-                self.__move_bbox(dmx, dmy)
-                self.p.update_bboxes_from_canvas()
-            elif self._highlighted_pidx is not None:
-                self.__set_point(self._highlighted_pidx, mx, my)
-                self.p.update_bboxes_from_canvas()
-            else:
-                self.p.scroll_request(dmx, Qt.Orientation.Horizontal)
-                self.p.scroll_request(dmy, Qt.Orientation.Vertical)
-                self.update()
-            return
-
-        if not self.bbox.empty():
-            index = self.__nearest_vertex(pos, self.epsilon)
-            if index is not None:
-                self._highlighted_bbox = False
-                self._highlighted_pidx = index
-                self.__override_cursor(CURSOR_POINT)
-                self.setStatusTip(self.toolTip())
-            elif (self.bbox.xmin() <= pos.x() <= self.bbox.xmax()) and \
-                 (self.bbox.ymin() <= pos.y() <= self.bbox.ymax()):
-                self._highlighted_bbox = True
-                self._highlighted_pidx = None
-                self.__override_cursor(CURSOR_GRAB)
+            if self.mode == CANVAS_EDIT_MODE:
+                if   self._highlighted_bbox:
+                    self.__move_bbox(dmx, dmy)
+                    self.p.update_bboxes_from_canvas()
+                elif self._highlighted_pidx is not None:
+                    self.__set_point(self._highlighted_pidx, mx, my)
+                    self.p.update_bboxes_from_canvas()
+                else:
+                    self.p.scroll_request(dmx, Qt.Orientation.Horizontal)
+                    self.p.scroll_request(dmy, Qt.Orientation.Vertical)
         else:
-            self._highlighted_bbox = False
-            self._highlighted_pidx = None
-            self.__override_cursor(CURSOR_DEFAULT)
+            if self.mode == CANVAS_EDIT_MODE:
+                if not self.bbox.empty():
+                    pidx = self.__nearest_point_idx(pos, 5.0 * self.__scale())
+                    if pidx is not None:
+                        self._highlighted_bbox = False
+                        self._highlighted_pidx = pidx
+                        self.__override_cursor(Qt.CursorShape.PointingHandCursor)
+                    elif (self.bbox.xmin() <= pos.x() <= self.bbox.xmax()) and \
+                        (self.bbox.ymin() <= pos.y() <= self.bbox.ymax()):
+                        self._highlighted_bbox = True
+                        self._highlighted_pidx = None
+                        self.__override_cursor(Qt.CursorShape.PointingHandCursor)
+                else:
+                    self._highlighted_bbox = False
+                    self._highlighted_pidx = None
+                    self.__override_cursor(Qt.CursorShape.ArrowCursor)
 
         self.update()
 
@@ -612,14 +602,16 @@ class Canvas(QWidget):
             return
 
         pos = self.__transform_pos(event.pos())
+
         if event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_CREATE_MODE:
                 self._bbox_sx = pos.x()
                 self._bbox_sy = pos.y()
             if self.mode == CANVAS_EDIT_MODE:
-                if (self._highlighted_bbox is not None) or \
+                if (self._highlighted_bbox) or \
                    (self._highlighted_pidx is not None):
-                    QApplication.setOverrideCursor(QCursor(Qt.CursorShape.OpenHandCursor))
+                    self.__override_cursor(Qt.CursorShape.OpenHandCursor)
+
         self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
@@ -631,9 +623,9 @@ class Canvas(QWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             if (self._highlighted_bbox) or \
                (self._highlighted_pidx is not None):
-                self.__override_cursor(CURSOR_GRAB)
+                self.__override_cursor(Qt.CursorShape.OpenHandCursor)
             else:
-                self.__override_cursor(CURSOR_POINT)
+                self.__override_cursor(Qt.CursorShape.PointingHandCursor)
             if (self.mode == CANVAS_CREATE_MODE) and \
                (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
@@ -748,7 +740,7 @@ class Canvas(QWidget):
             cursor = cursor.shape()
         return cursor
 
-    def __override_cursor(self, cursor: QCursor) -> None:
+    def __override_cursor(self, cursor: Qt.CursorShape) -> None:
         self._cursor = cursor
         if self.__current_cursor() is None:
             QApplication.setOverrideCursor(cursor)
@@ -794,7 +786,6 @@ class Canvas(QWidget):
         bbox.move(dx, dy)
         if self.__in_pixmap_bbox(bbox):
             self.bbox = bbox
-            self.p.set_dirty(True)
 
     def __set_point(self, pidx: int, x: float, y: float) -> None:
         if self.bbox.empty():
@@ -803,9 +794,8 @@ class Canvas(QWidget):
         bbox.set_xy(pidx, x, y)
         if self.__in_pixmap_bbox(bbox):
             self.bbox = bbox
-            self.p.set_dirty(True)
 
-    def __nearest_vertex(self, point: QPointF, eps: float) -> Optional[int]:
+    def __nearest_point_idx(self, point: QPointF, eps: float) -> Optional[int]:
         def distance(p):
             return sqrt(p.x() * p.x() + p.y() * p.y())
         for i in range(4):
