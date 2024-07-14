@@ -38,16 +38,16 @@ class BBox:
 
     def xmin(self) -> float:
         return self.x
-    
+
     def ymin(self) -> float:
         return self.y
-    
+
     def xmax(self) -> float:
         return self.x + self.w
-    
+
     def ymax(self) -> float:
         return self.y + self.h
-    
+
     def __getitem__(self, idx: int) -> QPointF:
         if idx == 0:
             return QPointF(self.x, self.y)

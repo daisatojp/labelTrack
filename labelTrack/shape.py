@@ -19,7 +19,6 @@ class Shape:
     # The following class variables influence the drawing
     # of _all_ shape objects.
     line_color = DEFAULT_LINE_COLOR
-    fill_color = DEFAULT_FILL_COLOR
     select_line_color = DEFAULT_SELECT_LINE_COLOR
     select_fill_color = DEFAULT_SELECT_FILL_COLOR
     vertex_fill_color = DEFAULT_VERTEX_FILL_COLOR
@@ -30,7 +29,6 @@ class Shape:
 
     def __init__(self):
         self.points = []
-        self.fill = False
         self.selected = False
 
         self._highlight_index = None
@@ -87,10 +85,6 @@ class Shape:
             painter.drawPath(vertex_path)
             painter.fillPath(vertex_path, self.vertex_fill_color)
 
-            if self.fill:
-                color = self.select_fill_color if self.selected else self.fill_color
-                painter.fillPath(line_path, color)
-
     def draw_vertex(self, path, i):
         d = self.point_size / self.scale
         shape = self.point_type
@@ -143,13 +137,10 @@ class Shape:
     def copy(self):
         shape = Shape()
         shape.points = [p for p in self.points]
-        shape.fill = self.fill
         shape.selected = self.selected
         shape._closed = self._closed
         if self.line_color != Shape.line_color:
             shape.line_color = self.line_color
-        if self.fill_color != Shape.fill_color:
-            shape.fill_color = self.fill_color
         return shape
 
     def __len__(self):
