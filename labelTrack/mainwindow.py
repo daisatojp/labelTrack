@@ -205,7 +205,7 @@ class MainWindow(QMainWindow):
         self.statusBar().addPermanentWidget(self.status_label)
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if not self.may_continue():
+        if not self.__may_continue():
             event.ignore()
         settings.set(SETTINGS_KEY_IMAGE_DIR, self._image_dir if self._image_dir is not None else '.')
         settings.set(SETTINGS_KEY_LABEL_PATH, self._label_file if self._label_file is not None else '.')
@@ -225,33 +225,10 @@ class MainWindow(QMainWindow):
     def file_current_item_changed(self, item=None):
         self.__load_image()
 
-    def may_continue(self):
-        if not self._dirty:
-            return True
-        else:
-            discard_changes = QMB.warning(
-                self, 'Attention',
-                'You have unsaved changes, would you like to save them and proceed?',
-                QMB.Yes | QMB.No | QMB.Cancel)
-            if discard_changes == QMB.No:
-                return True
-            elif discard_changes == QMB.Yes:
-                self.__save_label_file()
-                return True
-            else:
-                return False
-
     def update_bboxes_from_canvas(self):
         idx = self.img_list.currentRow()
         self._bboxes[idx] = copy.copy(self.canvas.bbox)
-        self.set_dirty(True)
-
-    def set_dirty(self, dirty: bool) -> None:
-        self._dirty = dirty
-        if dirty:
-            self.save_action.setEnabled(True)
-        else:
-            self.save_action.setEnabled(False)
+        self.__set_dirty(True)
 
     def zoom_request(self, delta: int) -> None:
         h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
@@ -282,8 +259,26 @@ class MainWindow(QMainWindow):
         bar = self.scroll_bars[orientation]
         bar.setValue(int(bar.value() + bar.singleStep() * (-delta / 120)))
 
+    def __set_dirty(self, dirty: bool) -> None:
+        self._dirty = dirty
+        self.save_action.setEnabled(dirty)
+
+    def __may_continue(self):
+        if not self._dirty:
+            return True
+        result = QMB.warning(
+            self, 'Attention',
+            'You have unsaved changes, would you like to save them and proceed?',
+            QMB.StandardButton.Yes | QMB.StandardButton.No | QMB.StandardButton.Cancel)
+        if result == QMB.StandardButton.No:
+            return True
+        if result == QMB.StandardButton.Yes:
+            self.__save_label_file()
+            return True
+        return False
+
     def __open_image_dir_dialog(self):
-        if not self.may_continue():
+        if not self.__may_continue():
             return
         default_image_dir = '.'
         if self._image_dir and osp.exists(self._image_dir):
@@ -294,6 +289,8 @@ class MainWindow(QMainWindow):
         self.__load_image_dir(target_image_dir)
 
     def __open_label_file_dialog(self):
+        if not self.__may_continue():
+            return
         default_label_path = '.'
         if self._label_file is not None:
             default_label_path = self._label_file
@@ -389,11 +386,8 @@ class MainWindow(QMainWindow):
         self.canvas.update()
 
     def __load_image_dir(self, image_dir: Optional[str]) -> None:
-        if not self.may_continue():
-            return
         self._image_dir = image_dir
         self._label_file = None
-        self._bboxes.clear()
         if image_dir is None:
             return
         img_files = scan_all_images(image_dir)
@@ -403,6 +397,7 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem(osp.basename(img_file))
             self.img_list.addItem(item)
         self.img_list.setCurrentRow(0)
+        self.__set_dirty(False)
         self.__load_image()
 
     def __load_label_file(self, label_file: Optional[str]) -> None:
@@ -424,7 +419,7 @@ class MainWindow(QMainWindow):
         with open(self._label_file, 'w') as f:
             for bbox in self._bboxes:
                 f.write(str(bbox) + '\n')
-        self.set_dirty(False)
+        self.__set_dirty(False)
         self.statusBar().showMessage(f'Saved to {self._label_file}')
         self.statusBar().show()
 
@@ -636,12 +631,12 @@ class Canvas(QWidget):
                     w=abs(pos.x() - self._bbox_sx),
                     h=abs(pos.y() - self._bbox_sy))
                 self.p.update_bboxes_from_canvas()
-                self.set_mode(CANVAS_EDIT_MODE)
                 self.p.create_bbox_action.setEnabled(True)
-                self.p.set_dirty(True)
-                self.update()
+                self.set_mode(CANVAS_EDIT_MODE)
             else:
                 QApplication.restoreOverrideCursor()
+
+        self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
         if self.pixmap is None:
