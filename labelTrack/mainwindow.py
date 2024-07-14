@@ -386,18 +386,30 @@ class MainWindow(QMainWindow):
         self.canvas.update()
 
     def __load_image_dir(self, image_dir: Optional[str]) -> None:
-        self._image_dir = image_dir
         self._label_file = None
+        self._bboxes.clear()
+        self.img_list.clear()
+        self.__set_dirty(False)
+        self.canvas.pixmap = None
+        self.canvas.bbox = BBox()
         if image_dir is None:
+            self._image_dir = None
+            self.canvas.update()
             return
         img_files = scan_all_images(image_dir)
+        if len(img_files) == 0:
+            QMB.critical(
+                self, 'Error.', 'No image found.',
+                QMB.StandardButton.Ok)
+            self._image_dir = None
+            self.canvas.update()
+            return
+        self._image_dir = image_dir
         self._bboxes = [BBox() for _ in range(len(img_files))]
-        self.img_list.clear()
         for img_file in img_files:
             item = QListWidgetItem(osp.basename(img_file))
             self.img_list.addItem(item)
         self.img_list.setCurrentRow(0)
-        self.__set_dirty(False)
         self.__load_image()
 
     def __load_label_file(self, label_file: Optional[str]) -> None:
