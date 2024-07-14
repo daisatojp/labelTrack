@@ -667,8 +667,6 @@ class Canvas(QWidget):
             self.current = None
             self.p.toggle_drawing_sensitive(False)
             self.update()
-        elif key == Qt.Key.Key_Return and self.can_close_shape():
-            self.finalise()
         elif key == Qt.Key.Key_Left and self.selected_shape:
             self.move_one_pixel('Left')
         elif key == Qt.Key.Key_Right and self.selected_shape:
@@ -913,7 +911,18 @@ class Canvas(QWidget):
             self.current.add_point(QPointF(max_x, min_y))
             self.current.add_point(target_pos)
             self.current.add_point(QPointF(min_x, max_y))
-            self.finalise()
+            if self.current.points[0] == self.current.points[-1]:
+                self.current = None
+                self.p.toggle_drawing_sensitive(False)
+                self.update()
+                return
+            self.shape = self.current
+            self.current = None
+            self.p.update_bbox_list_by_canvas()
+            self.set_editing(True)
+            self.p.create_bbox_action.setEnabled(True)
+            self.p.set_dirty(True)
+            self.update()
         elif self.__in_pixmap(pos.x(), pos.y()):
             self.current = Shape()
             self.current.add_point(pos)
@@ -1000,21 +1009,6 @@ class Canvas(QWidget):
             self.selected_shape.selected = False
             self.selected_shape = None
             self.update()
-
-    def finalise(self):
-        assert self.current
-        if self.current.points[0] == self.current.points[-1]:
-            self.current = None
-            self.p.toggle_drawing_sensitive(False)
-            self.update()
-            return
-        self.shape = self.current
-        self.current = None
-        self.p.update_bbox_list_by_canvas()
-        self.set_editing(True)
-        self.p.create_bbox_action.setEnabled(True)
-        self.p.set_dirty(True)
-        self.update()
 
     def close_enough(self, p1, p2):
         # d = distance(p1 - p2)
