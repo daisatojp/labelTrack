@@ -16,10 +16,10 @@ from labelTrack.utils import read_icon
 
 
 CURSOR_DEFAULT = Qt.CursorShape.ArrowCursor
-CURSOR_POINT = Qt.CursorShape.PointingHandCursor
-CURSOR_DRAW = Qt.CursorShape.CrossCursor
-CURSOR_MOVE = Qt.CursorShape.ClosedHandCursor
-CURSOR_GRAB = Qt.CursorShape.OpenHandCursor
+CURSOR_POINT   = Qt.CursorShape.PointingHandCursor
+CURSOR_DRAW    = Qt.CursorShape.CrossCursor
+CURSOR_MOVE    = Qt.CursorShape.ClosedHandCursor
+CURSOR_GRAB    = Qt.CursorShape.OpenHandCursor
 
 DEFAULT_LINE_COLOR = QColor(0, 255, 0, 128)
 DEFAULT_FILL_COLOR = QColor(255, 0, 0, 128)
@@ -633,6 +633,8 @@ class Canvas(QWidget):
         self.pixmap: Optional[QPixmap] = None
         self.bbox: Optional[BBox] = None
 
+        self._painter = QPainter()
+        self._cursor = CURSOR_DEFAULT
         self._mx: Optional[float] = None
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
@@ -641,13 +643,10 @@ class Canvas(QWidget):
 
         self.shape = None
         self.selected_shape = None
-        self.line = Shape()
         self.prev_point = QPointF()
         self.offsets = QPointF(), QPointF()
         self.h_shape = None
         self.h_vertex = None
-        self._painter = QPainter()
-        self._cursor = CURSOR_DEFAULT
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
 
@@ -779,6 +778,9 @@ class Canvas(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if self.pixmap is None:
+            return
+
         pos = self.__transform_pos(event.pos())
         if   event.button() == Qt.MouseButton.LeftButton and self.selected_shape:
             if self.selected_vertex():
