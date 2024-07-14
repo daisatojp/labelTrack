@@ -638,7 +638,8 @@ class Canvas(QWidget):
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
         self._bbox_sy: Optional[float] = None
-        self._highlighted_idx: Optional[int] = None
+        self._highlighted: bool = False
+        self._highlighted_pidx: Optional[int] = None
 
         self.shape = None
         self.selected_shape = None
@@ -688,13 +689,11 @@ class Canvas(QWidget):
 
         self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
 
-        # Polygon/Vertex moving.
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
                 self.p.set_dirty(True)
                 self.repaint()
-                # Display annotation width and height while moving vertex
                 point1 = self.h_shape[1]
                 point3 = self.h_shape[3]
                 current_width = abs(point1.x() - point3.x())
@@ -705,7 +704,6 @@ class Canvas(QWidget):
                 self.bounded_move_shape(self.selected_shape, pos)
                 self.p.set_dirty(True)
                 self.repaint()
-                # Display annotation width and height while moving shape
                 point1 = self.selected_shape[1]
                 point3 = self.selected_shape[3]
                 current_width = abs(point1.x() - point3.x())
@@ -720,14 +718,7 @@ class Canvas(QWidget):
             self.p.update_bbox_list_by_canvas()
             return
 
-        # Just hovering over the canvas, 2 possibilities:
-        # - Highlight shapes
-        # - Highlight vertex
-        # Update shape/vertex fill and tooltip value accordingly.
-        self.setToolTip("Image")
         if self.shape is not None:
-            # Look for a nearby vertex to highlight. If that fails,
-            # check if we happen to be inside a shape.
             index = self.shape.nearest_vertex(pos, self.epsilon)
             if index is not None:
                 if self.selected_vertex():
@@ -735,7 +726,6 @@ class Canvas(QWidget):
                 self.h_vertex, self.h_shape = index, self.shape
                 self.shape.highlight_vertex(index, self.shape.MOVE_VERTEX)
                 self.override_cursor(CURSOR_POINT)
-                self.setToolTip("Click & drag to move point")
                 self.setStatusTip(self.toolTip())
                 self.update()
             elif self.shape.contains_point(pos):
@@ -756,7 +746,7 @@ class Canvas(QWidget):
                 self.update()
             self.h_vertex, self.h_shape = None, None
             self.override_cursor(CURSOR_DEFAULT)
-        
+
         self.update()
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
