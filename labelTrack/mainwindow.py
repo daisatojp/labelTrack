@@ -48,7 +48,13 @@ class BBox:
 
     def ymax(self) -> float:
         return self.y + self.h
-    
+
+    def cx(self) -> float:
+        return self.x + self.w / 2.0
+
+    def cy(self) -> float:
+        return self.y + self.h / 2.0
+
     def move(self, dx: float, dy: float) -> None:
         self.x += dx
         self.y += dy
@@ -64,19 +70,15 @@ class BBox:
             return self.x, self.y + self.h
         raise IndexError()
 
-    def set_xy(self, idx: int, x: float, y: float) -> None:
-        x1, y1 = (x, y) if idx == 0 else self.get_xy(0)
-        x2, y2 = (x, y) if idx == 1 else self.get_xy(1)
-        x3, y3 = (x, y) if idx == 2 else self.get_xy(2)
-        x4, y4 = (x, y) if idx == 3 else self.get_xy(3)
-        xmin = min(x1, x2, x3, x4)
-        ymin = min(y1, y2, y3, y4)
-        xmax = max(x1, x2, x3, x4)
-        ymax = max(y1, y2, y3, y4)
-        self.x = xmin
-        self.y = ymin
-        self.w = xmax - xmin
-        self.h = ymax - ymin
+    def set_xy(self, pidx: int, x: float, y: float) -> None:
+        if not (0 <= pidx < 4):
+            raise IndexError()
+        x1, y1 = x, y
+        x2, y2 = self.get_xy((pidx + 2) % 4)
+        self.x = min(x1, x2)
+        self.y = min(y1, y2)
+        self.w = abs(x2 - x1)
+        self.h = abs(y2 - y1)
 
     def get_point(self, idx: int) -> QPointF:
         x, y = self.get_xy(idx)
@@ -572,7 +574,7 @@ class Canvas(QWidget):
                     self.__move_bbox(dmx, dmy)
                     self.p.update_bboxes_from_canvas()
                 elif self._highlighted_pidx is not None:
-                    self.__set_point(self._highlighted_pidx, mx, my)
+                    self._highlighted_pidx = self.__set_point(self._highlighted_pidx, mx, my)
                     self.p.update_bboxes_from_canvas()
                 else:
                     self.p.scroll_request(dmx, Qt.Orientation.Horizontal)
@@ -787,13 +789,23 @@ class Canvas(QWidget):
         if self.__in_pixmap_bbox(bbox):
             self.bbox = bbox
 
-    def __set_point(self, pidx: int, x: float, y: float) -> None:
+    def __set_point(self, pidx: int, x: float, y: float) -> int:
         if self.bbox.empty():
             return
         bbox = copy.copy(self.bbox)
         bbox.set_xy(pidx, x, y)
         if self.__in_pixmap_bbox(bbox):
             self.bbox = bbox
+            cx = bbox.cx()
+            cy = bbox.cy()
+            if (x <= cx) and (y <= cy):
+                return 0
+            if (cx < x)  and (y <= cy):
+                return 1
+            if (cx < x)  and (cy < y):
+                return 2
+            if (x <= cx) and (cy < y):
+                return 3
 
     def __nearest_point_idx(self, point: QPointF, eps: float) -> Optional[int]:
         def distance(p):
