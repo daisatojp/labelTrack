@@ -59,7 +59,7 @@ class BBox:
         self.x += dx
         self.y += dy
 
-    def get_vertex(self, idx: int) -> tuple[float, float]:
+    def get_xy(self, idx: int) -> tuple[float, float]:
         if idx == 0:
             return self.x, self.y
         if idx == 1:
@@ -70,11 +70,11 @@ class BBox:
             return self.x, self.y + self.h
         raise IndexError()
 
-    def set_vertex(self, idx: int, x: float, y: float) -> None:
-        x1, y1 = (x, y) if idx == 0 else self.get_vertex(0)
-        x2, y2 = (x, y) if idx == 1 else self.get_vertex(1)
-        x3, y3 = (x, y) if idx == 2 else self.get_vertex(2)
-        x4, y4 = (x, y) if idx == 3 else self.get_vertex(3)
+    def set_xy(self, idx: int, x: float, y: float) -> None:
+        x1, y1 = (x, y) if idx == 0 else self.get_xy(0)
+        x2, y2 = (x, y) if idx == 1 else self.get_xy(1)
+        x3, y3 = (x, y) if idx == 2 else self.get_xy(2)
+        x4, y4 = (x, y) if idx == 3 else self.get_xy(3)
         xmin = min(x1, x2, x3, x4)
         ymin = min(y1, y2, y3, y4)
         xmax = max(x1, x2, x3, x4)
@@ -84,8 +84,8 @@ class BBox:
         self.w = xmax - xmin
         self.h = ymax - ymin
 
-    def __getitem__(self, idx: int) -> QPointF:
-        x, y = self.get_vertex(idx)
+    def get_point(self, idx: int) -> QPointF:
+        x, y = self.get_xy(idx)
         return QPointF(x, y)
 
     def __str__(self) -> str:
@@ -246,13 +246,9 @@ class MainWindow(QMainWindow):
             else:
                 return False
 
-    def update_shape(self):
+    def update_bboxes_from_canvas(self):
         idx = self.img_list.currentRow()
-        self.canvas.bbox = self._bboxes[idx]
-
-    def update_bbox_list_by_canvas(self):
-        idx = self.img_list.currentRow()
-        self._bboxes[idx] = self.canvas.bbox
+        self._bboxes[idx] = copy.copy(self.canvas.bbox)
         self.set_dirty(True)
 
     def set_dirty(self, dirty: bool) -> None:
@@ -352,21 +348,26 @@ class MainWindow(QMainWindow):
         self.create_bbox_action.setEnabled(False)
 
     def __delete_bbox(self):
+        idx = self.img_list.currentRow()
+        if idx < 0:
+            return
+        self._bboxes[idx] = BBox()
         self.canvas.bbox = BBox()
-        self.update_bbox_list_by_canvas()
         self.canvas.update()
 
     def __copy_bbox(self):
         idx = self.img_list.currentRow()
-        if 0 < idx:
-            self._bboxes[idx] = self._bboxes[idx - 1]
-            self.update_shape()
+        if idx <= 0:
+            return
+        self._bboxes[idx] = copy.copy(self._bboxes[idx - 1])
+        self.canvas.bbox = copy.copy(self._bboxes[idx])
+        self.canvas.update()
 
     def __load_image(self) -> None:
+        idx = self.img_list.currentRow()
         item = self.img_list.currentItem()
         if item is None:
             return
-        self.canvas.reset_state()
         self.canvas.setEnabled(False)
         file_path = osp.join(self._image_dir, item.text())
         reader = QImageReader(file_path)
@@ -380,10 +381,9 @@ class MainWindow(QMainWindow):
                 f'Could not read {file_path}')
             self.status(f'Error reading {file_path}')
             return
-        self.canvas.load_pixmap(QPixmap.fromImage(img))
+        self.canvas.pixmap = QPixmap.fromImage(img)
+        self.canvas.bbox = copy.copy(self._bboxes[idx])
         self.status(f'Loaded {osp.basename(file_path)}')
-        self.update_shape()
-        self.set_dirty(False)
         self.canvas.setEnabled(True)
         self.__set_fit_window()
         idx = self.img_list.currentRow()
@@ -568,23 +568,24 @@ class Canvas(QWidget):
         my = pos.y()
         mx_pre = self._mx
         my_pre = self._my
+        dmx = mx - mx_pre if (mx_pre is not None) else None
+        dmy = my - my_pre if (my_pre is not None) else None
         self._mx = mx
         self._my = my
 
         self.p.status_label.setText(f'X: {mx:.2f}; Y: {my:.2f}')
 
         if event.buttons() == Qt.MouseButton.LeftButton:
-            if self._highlighted_pidx is not None:
-                self.bounded_move_vertex(pos)
-                self.p.set_dirty(True)
-                self.repaint()
+            if   self._highlighted_bbox:
+                self.__move_bbox(dmx, dmy)
+                self.p.update_bboxes_from_canvas()
+            elif self._highlighted_pidx is not None:
+                self.__set_point(self._highlighted_pidx, mx, my)
+                self.p.update_bboxes_from_canvas()
             else:
-                delta_x = pos.x() - self.pan_initial_pos.x()
-                delta_y = pos.y() - self.pan_initial_pos.y()
-                self.p.scroll_request(delta_x, Qt.Orientation.Horizontal)
-                self.p.scroll_request(delta_y, Qt.Orientation.Vertical)
+                self.p.scroll_request(dmx, Qt.Orientation.Horizontal)
+                self.p.scroll_request(dmy, Qt.Orientation.Vertical)
                 self.update()
-            self.p.update_bbox_list_by_canvas()
             return
 
         if not self.bbox.empty():
@@ -609,7 +610,7 @@ class Canvas(QWidget):
     def mousePressEvent(self, event: QMouseEvent) -> None:
         if self.pixmap is None:
             return
-        
+
         pos = self.__transform_pos(event.pos())
         if event.button() == Qt.MouseButton.LeftButton:
             if self.mode == CANVAS_CREATE_MODE:
@@ -636,16 +637,12 @@ class Canvas(QWidget):
             if (self.mode == CANVAS_CREATE_MODE) and \
                (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
-                x1 = self._bbox_sx
-                y1 = self._bbox_sy
-                x2 = pos.x()
-                y2 = pos.y()
                 self.bbox = BBox(
-                    x=min(x1, x2),
-                    y=min(y1, y2),
-                    w=abs(x2 - x1),
-                    h=abs(y2 - y1))
-                self.p.update_bbox_list_by_canvas()
+                    x=min(self._bbox_sx, pos.x()),
+                    y=min(self._bbox_sy, pos.y()),
+                    w=abs(pos.x() - self._bbox_sx),
+                    h=abs(pos.y() - self._bbox_sy))
+                self.p.update_bboxes_from_canvas()
                 self.set_editing(True)
                 self.p.create_bbox_action.setEnabled(True)
                 self.p.set_dirty(True)
@@ -679,20 +676,20 @@ class Canvas(QWidget):
             line_path = QPainterPath()
             vertex_path = QPainterPath()
 
-            line_path.moveTo(self.bbox[0])
+            line_path.moveTo(self.bbox.get_point(0))
             for pidx in range(4):
-                point = self.bbox[pidx]
+                point = self.bbox.get_point(pidx)
                 line_path.lineTo(point)
                 d = point_size_base / scale
                 if pidx == self._highlighted_pidx:
-                    d *= 4.0
+                    d *= 1.0
                     vertex_path.addRect(point.x() - d / 2, point.y() - d / 2, d, d)
                     self.vertex_fill_color = DEFAULT_HVERTEX_FILL_COLOR
                 else:
-                    d *= 1.5
+                    d *= 1.0
                     vertex_path.addEllipse(point, d / 2.0, d / 2.0)
                     self.vertex_fill_color = DEFAULT_VERTEX_FILL_COLOR
-            line_path.lineTo(self.bbox[0])
+            line_path.lineTo(self.bbox.get_point(0))
             p.drawPath(line_path)
             p.drawPath(vertex_path)
             p.fillPath(vertex_path, self.vertex_fill_color)
@@ -700,7 +697,7 @@ class Canvas(QWidget):
         if self.mode == CANVAS_CREATE_MODE:
             if (self._bbox_sx is None) and \
                (self._bbox_sy is None) and \
-               (self.__in_pixmap(self._mx, self._my)):
+               (self.__in_pixmap_xy(self._mx, self._my)):
                 p.setPen(QColor(0, 0, 0))
                 p.drawLine(int(self._mx), 0, int(self._mx), int(self.pixmap.height()))
                 p.drawLine(0, int(self._my), int(self.pixmap.width()), int(self._my))
@@ -749,10 +746,6 @@ class Canvas(QWidget):
     def close_enough(self, p1, p2):
         return distance(p1 - p2) < self.epsilon
 
-    def load_pixmap(self, pixmap):
-        self.pixmap = pixmap
-        self.repaint()
-
     def current_cursor(self):
         cursor = QApplication.overrideCursor()
         if cursor is not None:
@@ -768,11 +761,6 @@ class Canvas(QWidget):
 
     def restore_cursor(self):
         QApplication.restoreOverrideCursor()
-
-    def reset_state(self):
-        self.restore_cursor()
-        self.pixmap = None
-        self.update()
 
     def __transform_pos(self, point: QPoint) -> QPointF:
         pointf = QPointF(point.x(), point.y())
@@ -792,26 +780,37 @@ class Canvas(QWidget):
     def __scale(self) -> float:
         return 0.01 * self.p.zoom_spinbox.value()
 
-    def __in_pixmap(self, x: int | float, y: int | float) -> bool:
+    def __in_pixmap_xy(self, x: int | float, y: int | float) -> bool:
         w, h = self.pixmap.width(), self.pixmap.height()
         return (0 <= x <= w) and (0 <= y <= h)
+    
+    def __in_pixmap_bbox(self, bbox: BBox) -> bool:
+        return (self.pixmap is not None) and \
+               (0 <= bbox.xmin()) and \
+               (bbox.xmax() < self.pixmap.width()) and \
+               (0 <= bbox.ymin()) and \
+               (bbox.ymax() < self.pixmap.height())
 
     def __move_bbox(self, dx: float, dy: float) -> None:
         if self.bbox.empty():
             return
         bbox = copy.copy(self.bbox)
         bbox.move(dx, dy)
-        w = self.pixmap.width()
-        h = self.pixmap.height()
-        if (0 <= bbox.xmin()) and \
-           (bbox.xmax() < w) and \
-           (0 <= bbox.ymin()) and \
-           (bbox.ymax() < h):
+        if self.__in_pixmap_bbox(bbox):
+            self.bbox = bbox
+            self.p.set_dirty(True)
+
+    def __set_point(self, pidx: int, x: float, y: float) -> None:
+        if self.bbox.empty():
+            return
+        bbox = copy.copy(self.bbox)
+        bbox.set_xy(pidx, x, y)
+        if self.__in_pixmap_bbox(bbox):
             self.bbox = bbox
             self.p.set_dirty(True)
 
     def __nearest_vertex(self, point: QPointF, eps: float) -> Optional[int]:
         for i in range(4):
-            if distance(self.bbox[i] - point) <= eps:
+            if distance(self.bbox.get_point(i) - point) <= eps:
                 return i
         return None
