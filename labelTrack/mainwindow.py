@@ -109,18 +109,18 @@ class MainWindow(QMainWindow):
         self.save_action.setIcon(read_icon('save'))
         self.save_action.setShortcut('Ctrl+s')
         self.save_action.triggered.connect(self.__save_label_file)
-        self.create_object_action = QAction('Create Object', self)
-        self.create_object_action.setIcon(read_icon('objects'))
-        self.create_object_action.setShortcut('w')
-        self.create_object_action.triggered.connect(self.create_object)
-        self.delete_object_action = QAction('Delete Object', self)
-        self.delete_object_action.setIcon(read_icon('close'))
-        self.delete_object_action.setShortcut('c')
-        self.delete_object_action.triggered.connect(self.delete_object)
-        self.copy_object_action = QAction('Copy Object', self)
-        self.copy_object_action.setIcon(read_icon('copy'))
-        self.copy_object_action.setShortcut('r')
-        self.copy_object_action.triggered.connect(self.copy_object)
+        self.create_bbox_action = QAction('Create BBox', self)
+        self.create_bbox_action.setIcon(read_icon('objects'))
+        self.create_bbox_action.setShortcut('w')
+        self.create_bbox_action.triggered.connect(self.__create_bbox)
+        self.delete_bbox_action = QAction('Delete BBox', self)
+        self.delete_bbox_action.setIcon(read_icon('close'))
+        self.delete_bbox_action.setShortcut('c')
+        self.delete_bbox_action.triggered.connect(self.__delete_bbox)
+        self.copy_bbox_action = QAction('Copy BBox', self)
+        self.copy_bbox_action.setIcon(read_icon('copy'))
+        self.copy_bbox_action.setShortcut('r')
+        self.copy_bbox_action.triggered.connect(self.__copy_bbox)
         self.next_image_and_copy_action = QAction('Next Image and Copy', self)
         self.next_image_and_copy_action.setIcon(read_icon('next'))
         self.next_image_and_copy_action.setShortcut('t')
@@ -171,9 +171,9 @@ class MainWindow(QMainWindow):
         self.menus_file.addAction(self.next_image_action)
         self.menus_file.addAction(self.prev_image_action)
         self.menus_file.addAction(self.quit_action)
-        self.menus_edit.addAction(self.create_object_action)
-        self.menus_edit.addAction(self.delete_object_action)
-        self.menus_edit.addAction(self.copy_object_action)
+        self.menus_edit.addAction(self.create_bbox_action)
+        self.menus_edit.addAction(self.delete_bbox_action)
+        self.menus_edit.addAction(self.copy_bbox_action)
         self.menus_edit.addAction(self.next_image_and_copy_action)
         self.menus_edit.addAction(self.next_image_and_delete_action)
         self.menus_view.addAction(self.auto_saving_action)
@@ -193,8 +193,8 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.prev_image_action)
         self.toolbar.addAction(self.save_action)
         self.toolbar.addSeparator()
-        self.toolbar.addAction(self.create_object_action)
-        self.toolbar.addAction(self.delete_object_action)
+        self.toolbar.addAction(self.create_bbox_action)
+        self.toolbar.addAction(self.delete_bbox_action)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.zoom_in_action)
         self.toolbar.addWidget(self.zoom_spinbox)
@@ -292,30 +292,13 @@ class MainWindow(QMainWindow):
             self.img_list_widget.setCurrentRow(idx)
         self.__load_image()
 
-    def create_object(self):
-        if self.image.isNull():
-            return
-        self.canvas.set_editing(False)
-        self.create_object_action.setEnabled(False)
-
-    def delete_object(self):
-        self.canvas.shape = None
-        self.update_bbox_list_by_canvas()
-        self.canvas.update()
-
-    def copy_object(self):
-        idx = self.img_list_widget.currentRow()
-        if 0 < idx:
-            self._bboxes[idx] = self._bboxes[idx - 1]
-            self.update_shape()
-
     def next_image_and_copy(self):
         self.open_next_image()
-        self.copy_object()
+        self.__copy_bbox()
 
     def next_image_and_delete(self):
         self.open_next_image()
-        self.delete_object()
+        self.__delete_bbox()
 
     def show_info_dialog(self):
         msg = f'Name:{__appname__} \nApp Version:{__version__}'
@@ -409,6 +392,23 @@ class MainWindow(QMainWindow):
     def scroll_request(self, delta: int | float, orientation: Qt.Orientation) -> None:
         bar = self.scroll_bars[orientation]
         bar.setValue(int(bar.value() + bar.singleStep() * (-delta / 120)))
+
+    def __create_bbox(self):
+        if self.image.isNull():
+            return
+        self.canvas.set_editing(False)
+        self.create_bbox_action.setEnabled(False)
+
+    def __delete_bbox(self):
+        self.canvas.shape = None
+        self.update_bbox_list_by_canvas()
+        self.canvas.update()
+
+    def __copy_bbox(self):
+        idx = self.img_list_widget.currentRow()
+        if 0 < idx:
+            self._bboxes[idx] = self._bboxes[idx - 1]
+            self.update_shape()
 
     def __load_image(self) -> None:
         item = self.img_list_widget.currentItem()
@@ -719,13 +719,13 @@ class Canvas(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        pos = self.__transform_pos(event.pos())
         if   event.button() == Qt.MouseButton.LeftButton and self.selected_shape:
             if self.selected_vertex():
                 self.override_cursor(CURSOR_POINT)
             else:
                 self.override_cursor(CURSOR_GRAB)
         elif event.button() == Qt.MouseButton.LeftButton:
-            pos = self.__transform_pos(event.pos())
             if self.mode == CANVAS_CREATE_MODE:
                 self.handle_drawing(pos)
             else:
@@ -755,16 +755,14 @@ class Canvas(QWidget):
                 p.setPen(QColor(0, 0, 0))
                 p.drawLine(int(self._mx), 0, int(self._mx), int(self.pixmap.height()))
                 p.drawLine(0, int(self._my), int(self.pixmap.width()), int(self._my))
-
-        if self.current is not None and len(self.line) == 2:
-            left_top = self.line[0]
-            right_bottom = self.line[1]
-            rect_width = right_bottom.x() - left_top.x()
-            rect_height = right_bottom.y() - left_top.y()
-            p.setPen(self.drawing_rect_color)
-            brush = QBrush(Qt.BrushStyle.BDiagPattern)
-            p.setBrush(brush)
-            p.drawRect(int(left_top.x()), int(left_top.y()), int(rect_width), int(rect_height))            
+            if (self._bbox_sx is not None) and \
+               (self._bbox_sy is not None):
+                p.setPen(self.drawing_rect_color)
+                p.setBrush(QBrush(Qt.BrushStyle.BDiagPattern))
+                p.drawRect(int(min(self._bbox_sx, self._mx)),
+                           int(min(self._bbox_sy, self._my)),
+                           int(abs(self._mx - self._bbox_sx)),
+                           int(abs(self._my - self._bbox_sy)))
 
         self.setAutoFillBackground(True)
         pal = self.palette()
@@ -924,7 +922,7 @@ class Canvas(QWidget):
         self.current = None
         self.p.update_bbox_list_by_canvas()
         self.set_editing(True)
-        self.p.create_object_action.setEnabled(True)
+        self.p.create_bbox_action.setEnabled(True)
         self.p.set_dirty()
         self.update()
 
