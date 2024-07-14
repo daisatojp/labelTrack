@@ -576,7 +576,7 @@ class Canvas(QWidget):
         else:
             if self.mode == CANVAS_EDIT_MODE:
                 if not self.bbox.empty():
-                    pidx = self.__nearest_point_idx(pos, 5.0 * self.__scale())
+                    pidx = self.__nearest_point_idx(pos, 20.0 / self.__scale())
                     if   pidx is not None:
                         self._highlighted_bbox = False
                         self._highlighted_pidx = pidx
