@@ -16,8 +16,6 @@ class Shape:
 
     MOVE_VERTEX, NEAR_VERTEX = range(2)
 
-    # The following class variables influence the drawing
-    # of _all_ shape objects.
     line_color = DEFAULT_LINE_COLOR
     select_line_color = DEFAULT_SELECT_LINE_COLOR
     select_fill_color = DEFAULT_SELECT_FILL_COLOR
@@ -38,11 +36,6 @@ class Shape:
             self.MOVE_VERTEX: (1.5, self.P_SQUARE),
         }
 
-        self._closed = False
-
-    def close(self):
-        self._closed = True
-
     def reach_max_points(self):
         if len(self.points) >= 4:
             return True
@@ -51,12 +44,6 @@ class Shape:
     def add_point(self, point):
         if not self.reach_max_points():
             self.points.append(point)
-
-    def is_closed(self):
-        return self._closed
-
-    def set_open(self):
-        self._closed = False
 
     def paint(self, painter):
         if self.points:
@@ -70,16 +57,10 @@ class Shape:
             vertex_path = QPainterPath()
 
             line_path.moveTo(self.points[0])
-            # Uncommenting the following line will draw 2 paths
-            # for the 1st vertex, and make it non-filled, which
-            # may be desirable.
-            # self.drawVertex(vertex_path, 0)
-
             for i, p in enumerate(self.points):
                 line_path.lineTo(p)
                 self.draw_vertex(vertex_path, i)
-            if self.is_closed():
-                line_path.lineTo(self.points[0])
+            line_path.lineTo(self.points[0])
 
             painter.drawPath(line_path)
             painter.drawPath(vertex_path)
@@ -133,15 +114,6 @@ class Shape:
 
     def highlight_clear(self):
         self._highlight_index = None
-
-    def copy(self):
-        shape = Shape()
-        shape.points = [p for p in self.points]
-        shape.selected = self.selected
-        shape._closed = self._closed
-        if self.line_color != Shape.line_color:
-            shape.line_color = self.line_color
-        return shape
 
     def __len__(self):
         return len(self.points)

@@ -231,7 +231,6 @@ class MainWindow(QMainWindow):
             shape.add_point(QPointF(bbox.xmax(), bbox.ymin()))
             shape.add_point(QPointF(bbox.xmax(), bbox.ymax()))
             shape.add_point(QPointF(bbox.xmin(), bbox.ymax()))
-            shape.close()
             shape.line_color = QColor(227, 79, 208, 100)
             shape.fill_color = QColor(227, 79, 208, 100)
             self.canvas.load_shape(shape)
@@ -892,7 +891,6 @@ class Canvas(QWidget):
             self.p.toggle_drawing_sensitive(False)
             self.update()
             return
-        self.current.close()
         self.shape = self.current
         self.current = None
         self.p.update_bbox_list_by_canvas()
