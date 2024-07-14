@@ -46,6 +46,17 @@ class BBox:
     
     def ymax(self) -> float:
         return self.y + self.h
+    
+    def __getitem__(self, idx: int) -> QPointF:
+        if idx == 0:
+            return QPointF(self.x, self.y)
+        if idx == 1:
+            return QPointF(self.x + self.w, self.y)
+        if idx == 2:
+            return QPointF(self.x + self.w, self.y + self.h)
+        if idx == 3:
+            return QPointF(self.x, self.y + self.h)
+        raise IndexError()
 
     def __str__(self) -> str:
         if self.empty():
@@ -65,13 +76,13 @@ class MainWindow(QMainWindow):
         self._image_dir: Optional[str] = None
         self._label_file: Optional[str] = None
         self._bboxes: list[BBox] = []
-        self.dirty = False
+        self._dirty: bool = False
 
-        self.img_list_widget = QListWidget()
-        self.img_list_widget.currentItemChanged.connect(self.file_current_item_changed)
+        self.img_list = QListWidget()
+        self.img_list.currentItemChanged.connect(self.file_current_item_changed)
         self.file_dock = QDockWidget('Image List', self)
         self.file_dock.setObjectName('images')
-        self.file_dock.setWidget(self.img_list_widget)
+        self.file_dock.setWidget(self.img_list)
 
         self.canvas = Canvas(parent=self)
 
@@ -270,25 +281,25 @@ class MainWindow(QMainWindow):
         self.statusBar().show()
 
     def open_prev_image(self):
-        cnt = self.img_list_widget.count()
-        idx = self.img_list_widget.currentRow()
+        cnt = self.img_list.count()
+        idx = self.img_list.currentRow()
         if self.auto_saving_action.isChecked():
             self.__save_label_file()
         if cnt <= 0:
             return
         if 0 <= idx - 1:
             idx -= 1
-            self.img_list_widget.setCurrentRow(idx)
+            self.img_list.setCurrentRow(idx)
         self.__load_image()
 
     def open_next_image(self):
-        cnt = self.img_list_widget.count()
-        idx = self.img_list_widget.currentRow()
+        cnt = self.img_list.count()
+        idx = self.img_list.currentRow()
         if self.auto_saving_action.isChecked():
             self.__save_label_file()
         if idx + 1 < cnt:
             idx += 1
-            self.img_list_widget.setCurrentRow(idx)
+            self.img_list.setCurrentRow(idx)
         self.__load_image()
 
     def next_image_and_copy(self):
@@ -311,7 +322,7 @@ class MainWindow(QMainWindow):
         self.canvas.update()
 
     def may_continue(self):
-        if not self.dirty:
+        if not self._dirty:
             return True
         else:
             discard_changes = QMB.warning(
@@ -327,7 +338,7 @@ class MainWindow(QMainWindow):
                 return False
 
     def update_shape(self):
-        idx = self.img_list_widget.currentRow()
+        idx = self.img_list.currentRow()
         bbox = self._bboxes[idx]
         if not bbox.empty():
             shape = Shape()
@@ -343,7 +354,7 @@ class MainWindow(QMainWindow):
             self.canvas.load_shape(None)
 
     def update_bbox_list_by_canvas(self):
-        idx = self.img_list_widget.currentRow()
+        idx = self.img_list.currentRow()
         s = self.canvas.shape
         if s is not None:
             pts = [(p.x(), p.y()) for p in s.points]
@@ -353,15 +364,14 @@ class MainWindow(QMainWindow):
             self._bboxes[idx] = BBox(x=x, y=y, w=w, h=h)
         else:
             self._bboxes[idx] = BBox()
-        self.set_dirty()
+        self.set_dirty(True)
 
-    def set_dirty(self):
-        self.dirty = True
-        self.save_action.setEnabled(True)
-
-    def set_clean(self):
-        self.dirty = False
-        self.save_action.setEnabled(False)
+    def set_dirty(self, dirty: bool) -> None:
+        self._dirty = dirty
+        if dirty:
+            self.save_action.setEnabled(True)
+        else:
+            self.save_action.setEnabled(False)
 
     def zoom_request(self, delta: int) -> None:
         h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
@@ -404,13 +414,13 @@ class MainWindow(QMainWindow):
         self.canvas.update()
 
     def __copy_bbox(self):
-        idx = self.img_list_widget.currentRow()
+        idx = self.img_list.currentRow()
         if 0 < idx:
             self._bboxes[idx] = self._bboxes[idx - 1]
             self.update_shape()
 
     def __load_image(self) -> None:
-        item = self.img_list_widget.currentItem()
+        item = self.img_list.currentItem()
         if item is None:
             return
         self.canvas.reset_state()
@@ -431,12 +441,12 @@ class MainWindow(QMainWindow):
         self.canvas.load_pixmap(QPixmap.fromImage(img))
         self.status(f'Loaded {osp.basename(file_path)}')
         self.update_shape()
-        self.set_clean()
+        self.set_dirty(False)
         self.canvas.setEnabled(True)
         self.__set_fit_window()
         self.paint_canvas()
-        idx = self.img_list_widget.currentRow()
-        cnt = self.img_list_widget.count()
+        idx = self.img_list.currentRow()
+        cnt = self.img_list.count()
         counter = f'[{idx + 1} / {cnt}]'
         self.setWindowTitle(f'{__appname__} {file_path} {counter}')
         self.canvas.setFocus()
@@ -451,11 +461,11 @@ class MainWindow(QMainWindow):
             return
         img_files = scan_all_images(image_dir)
         self._bboxes = [BBox() for _ in range(len(img_files))]
-        self.img_list_widget.clear()
+        self.img_list.clear()
         for img_file in img_files:
             item = QListWidgetItem(osp.basename(img_file))
-            self.img_list_widget.addItem(item)
-        self.img_list_widget.setCurrentRow(0)
+            self.img_list.addItem(item)
+        self.img_list.setCurrentRow(0)
         self.__load_image()
 
     def __load_label_file(self, label_file: Optional[str]) -> None:
@@ -472,15 +482,14 @@ class MainWindow(QMainWindow):
     def __save_label_file(self) -> None:
         if self._label_file is None:
             return
-        if self.dirty is False:
+        if self._dirty is False:
             return
         with open(self._label_file, 'w') as f:
             for bbox in self._bboxes:
                 f.write(str(bbox) + '\n')
-        self.set_clean()
+        self.set_dirty(False)
         self.statusBar().showMessage(f'Saved to {self._label_file}')
         self.statusBar().show()
-        self.dirty = False
 
     def __reset_zoom(self) -> None:
         self.zoom_spinbox.setValue(100)
@@ -546,6 +555,7 @@ class Canvas(QWidget):
         self._my: Optional[float] = None
         self._bbox_sx: Optional[float] = None
         self._bbox_sy: Optional[float] = None
+        self._highlighted_idx: Optional[int] = None
 
         self.shape = None
         self.current = None
@@ -634,7 +644,7 @@ class Canvas(QWidget):
         if event.buttons() == Qt.MouseButton.LeftButton:
             if self.selected_vertex():
                 self.bounded_move_vertex(pos)
-                self.p.set_dirty()
+                self.p.set_dirty(True)
                 self.repaint()
                 # Display annotation width and height while moving vertex
                 point1 = self.h_shape[1]
@@ -645,7 +655,7 @@ class Canvas(QWidget):
             elif self.selected_shape and self.prev_point:
                 self.override_cursor(CURSOR_MOVE)
                 self.bounded_move_shape(self.selected_shape, pos)
-                self.p.set_dirty()
+                self.p.set_dirty(True)
                 self.repaint()
                 # Display annotation width and height while moving shape
                 point1 = self.selected_shape[1]
@@ -915,7 +925,7 @@ class Canvas(QWidget):
         self.p.update_bbox_list_by_canvas()
         self.set_editing(True)
         self.p.create_bbox_action.setEnabled(True)
-        self.p.set_dirty()
+        self.p.set_dirty(True)
         self.update()
 
     def close_enough(self, p1, p2):
@@ -950,7 +960,7 @@ class Canvas(QWidget):
             self.selected_shape.points[1] += QPointF(0, 1.0)
             self.selected_shape.points[2] += QPointF(0, 1.0)
             self.selected_shape.points[3] += QPointF(0, 1.0)
-        self.p.set_dirty()
+        self.p.set_dirty(True)
         self.repaint()
 
     def move_out_of_bound(self, step):
