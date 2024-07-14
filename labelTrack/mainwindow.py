@@ -577,15 +577,19 @@ class Canvas(QWidget):
             if self.mode == CANVAS_EDIT_MODE:
                 if not self.bbox.empty():
                     pidx = self.__nearest_point_idx(pos, 5.0 * self.__scale())
-                    if pidx is not None:
+                    if   pidx is not None:
                         self._highlighted_bbox = False
                         self._highlighted_pidx = pidx
                         self.__override_cursor(Qt.CursorShape.PointingHandCursor)
                     elif (self.bbox.xmin() <= pos.x() <= self.bbox.xmax()) and \
-                        (self.bbox.ymin() <= pos.y() <= self.bbox.ymax()):
+                         (self.bbox.ymin() <= pos.y() <= self.bbox.ymax()):
                         self._highlighted_bbox = True
                         self._highlighted_pidx = None
                         self.__override_cursor(Qt.CursorShape.PointingHandCursor)
+                    else:
+                        self._highlighted_bbox = False
+                        self._highlighted_pidx = None
+                        self.__override_cursor(Qt.CursorShape.ArrowCursor)
                 else:
                     self._highlighted_bbox = False
                     self._highlighted_pidx = None
