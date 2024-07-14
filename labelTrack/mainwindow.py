@@ -621,11 +621,6 @@ class Canvas(QWidget):
         pos = self.__transform_pos(event.pos())
 
         if event.button() == Qt.MouseButton.LeftButton:
-            if (self._highlighted_bbox) or \
-               (self._highlighted_pidx is not None):
-                self.__override_cursor(Qt.CursorShape.OpenHandCursor)
-            else:
-                self.__override_cursor(Qt.CursorShape.PointingHandCursor)
             if (self.mode == CANVAS_CREATE_MODE) and \
                (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
@@ -636,9 +631,11 @@ class Canvas(QWidget):
                     h=abs(pos.y() - self._bbox_sy))
                 self.p.update_bboxes_from_canvas()
                 self.p.create_bbox_action.setEnabled(True)
-                self.set_mode(CANVAS_EDIT_MODE)
-            else:
-                QApplication.restoreOverrideCursor()
+                self.mode = CANVAS_EDIT_MODE
+                self._highlighted_bbox = False
+                self._highlighted_pidx = None
+                self._bbox_sx = None
+                self._bbox_sy = None
 
         self.update()
 
