@@ -99,6 +99,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(__appname__)
 
         self._image_dir: Optional[str] = None
+        self._image_files: list[str] = []
         self._label_file: Optional[str] = None
         self._bboxes: list[BBox] = []
         self._dirty: bool = False
@@ -108,19 +109,17 @@ class MainWindow(QMainWindow):
         self.file_dock = QDockWidget('Image List', self)
         self.file_dock.setObjectName('images')
         self.file_dock.setWidget(self.img_list)
+        self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
 
         self.canvas = Canvas(parent=self)
-
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidget(self.canvas)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_bars = {
             Qt.Orientation.Vertical: self.scroll_area.verticalScrollBar(),
             Qt.Orientation.Horizontal: self.scroll_area.horizontalScrollBar()}
-
         self.setCentralWidget(self.scroll_area)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.file_dock)
-        self.file_dock.setFeatures(QDockWidget.DockWidgetFeature.DockWidgetFloatable)
 
         self.quit_action = self.__new_action('Quit', icon_file='quit', slot=self.close, shortcut='Ctrl+Q')
         self.open_image_dir_action = self.__new_action('Open Image', icon_file='open', slot=self.__open_image_dir_dialog)
@@ -229,6 +228,7 @@ class MainWindow(QMainWindow):
         idx = self.img_list.currentRow()
         self._bboxes[idx] = copy.copy(self.canvas.bbox)
         self.__set_dirty(True)
+        self.__update_img_list()
 
     def zoom_request(self, delta: int) -> None:
         h_bar = self.scroll_bars[Qt.Orientation.Horizontal]
@@ -352,6 +352,7 @@ class MainWindow(QMainWindow):
         self._bboxes[idx] = BBox()
         self.canvas.bbox = BBox()
         self.canvas.update()
+        self.__update_img_list()
 
     def __copy_bbox(self):
         idx = self.img_list.currentRow()
@@ -360,14 +361,14 @@ class MainWindow(QMainWindow):
         self._bboxes[idx] = copy.copy(self._bboxes[idx - 1])
         self.canvas.bbox = copy.copy(self._bboxes[idx])
         self.canvas.update()
+        self.__update_img_list()
 
     def __load_image(self) -> None:
         idx = self.img_list.currentRow()
-        item = self.img_list.currentItem()
-        if item is None:
+        if idx < 0:
             return
         self.canvas.setEnabled(False)
-        file_path = osp.join(self._image_dir, item.text())
+        file_path = self._image_files[idx]
         reader = QImageReader(file_path)
         reader.setAutoTransform(True)
         img = reader.read()
@@ -400,10 +401,11 @@ class MainWindow(QMainWindow):
         self.canvas.bbox = BBox()
         if image_dir is None:
             self._image_dir = None
+            self._image_files.clear()
             self.canvas.update()
             return
-        img_files = scan_all_images(image_dir)
-        if len(img_files) == 0:
+        self._image_files = scan_all_images(image_dir)
+        if len(self._image_files) == 0:
             QMB.critical(
                 self, 'Error.', 'No image found.',
                 QMB.StandardButton.Ok)
@@ -411,12 +413,25 @@ class MainWindow(QMainWindow):
             self.canvas.update()
             return
         self._image_dir = image_dir
-        self._bboxes = [BBox() for _ in range(len(img_files))]
-        for img_file in img_files:
-            item = QListWidgetItem(osp.basename(img_file))
-            self.img_list.addItem(item)
+        self._bboxes = [BBox() for _ in range(len(self._image_files))]
+        self.__update_img_list()
         self.img_list.setCurrentRow(0)
         self.__load_image()
+
+    def __update_img_list(self) -> None:
+        num = len(self._image_files)
+        assert len(self._bboxes) == num
+        if self.img_list.count() != num:
+            self.img_list.clear()
+            for _ in range(num):
+                self.img_list.addItem(QListWidgetItem())
+        for i, (image_file, bbox) in enumerate(zip(self._image_files, self._bboxes)):
+            file = osp.basename(image_file)
+            if bbox.empty():
+                text = f'{file} (no bbox)'
+            else:
+                text = f'{file}'
+            self.img_list.item(i).setText(text)
 
     def __load_label_file(self, label_file: Optional[str]) -> None:
         self._label_file = label_file
@@ -428,6 +443,7 @@ class MainWindow(QMainWindow):
                 s = line.split(',')
                 self._bboxes[idx] = BBox(
                     x=float(s[0]), y=float(s[1]), w=float(s[2]), h=float(s[3]))
+        self.__update_img_list()
 
     def __save_label_file(self) -> None:
         if self._label_file is None:
