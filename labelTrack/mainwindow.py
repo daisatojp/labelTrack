@@ -289,6 +289,12 @@ class MainWindow(QMainWindow):
         self.__load_image_dir(target_image_dir)
 
     def __open_label_file_dialog(self):
+        if self._image_dir is None:
+            QMB.information(
+                self, 'Attention',
+                'You have not opened image folder.',
+                QMB.StandardButton.Ok)
+            return
         if not self.__may_continue():
             return
         default_label_path = '.'
