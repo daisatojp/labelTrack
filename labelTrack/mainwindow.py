@@ -283,10 +283,10 @@ class MainWindow(QMainWindow):
         default_image_dir = '.'
         if self._image_dir and osp.exists(self._image_dir):
             default_image_dir = self._image_dir
-        target_image_dir = QFileDialog.getExistingDirectory(
+        image_dir = QFileDialog.getExistingDirectory(
             self, f'{__appname__} - Open Image Directory', default_image_dir,
             QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
-        self.__load_image_dir(target_image_dir)
+        self.__load_image_dir(image_dir)
 
     def __open_label_file_dialog(self):
         if self._image_dir is None:
@@ -297,17 +297,18 @@ class MainWindow(QMainWindow):
             return
         if not self.__may_continue():
             return
-        default_label_path = '.'
+        default_label_file = '.'
         if self._label_file is not None:
-            default_label_path = self._label_file
-        target_file_path = QFileDialog.getSaveFileName(
+            default_label_file = self._label_file
+        label_file = QFileDialog.getSaveFileName(
             self, f'{__appname__} - Save label to the file',
-            osp.dirname(default_label_path), 'Text (*.txt)',
+            osp.dirname(default_label_file), 'Text (*.txt)',
             None, QFileDialog.Option.DontConfirmOverwrite)
-        if target_file_path is not None and len(target_file_path) > 1:
-            self.__load_label_file(target_file_path[0])
-        self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
-        self.statusBar().show()
+        label_file = label_file[0]
+        if label_file != '':
+            self.__load_label_file(label_file)
+            self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
+            self.statusBar().show()
 
     def __open_prev_image(self):
         cnt = self.img_list.count()
@@ -387,8 +388,7 @@ class MainWindow(QMainWindow):
         self.__set_fit_window()
         idx = self.img_list.currentRow()
         cnt = self.img_list.count()
-        counter = f'[{idx + 1} / {cnt}]'
-        self.setWindowTitle(f'{__appname__} {file_path} {counter}')
+        self.setWindowTitle(f'{__appname__} {file_path} [{idx + 1} / {cnt}]')
         self.canvas.setFocus()
         self.canvas.update()
 
@@ -399,7 +399,8 @@ class MainWindow(QMainWindow):
         self.__set_dirty(False)
         self.canvas.pixmap = None
         self.canvas.bbox = BBox()
-        if image_dir is None:
+        if (image_dir is None) or \
+           (image_dir == ''):
             self._image_dir = None
             self._image_files.clear()
             self.canvas.update()
