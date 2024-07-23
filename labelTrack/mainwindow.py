@@ -445,6 +445,7 @@ class MainWindow(QMainWindow):
                 self._bboxes[idx] = BBox(
                     x=float(s[0]), y=float(s[1]), w=float(s[2]), h=float(s[3]))
         self.__update_img_list()
+        self.__load_image()
 
     def __save_label_file(self) -> None:
         if self._label_file is None:
