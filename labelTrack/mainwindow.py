@@ -283,10 +283,18 @@ class MainWindow(QMainWindow):
         default_image_dir = '.'
         if self._image_dir and osp.exists(self._image_dir):
             default_image_dir = self._image_dir
-        image_dir = QFileDialog.getExistingDirectory(
-            self, f'{__appname__} - Open Image Directory', default_image_dir,
-            QFileDialog.Option.ShowDirsOnly | QFileDialog.Option.DontResolveSymlinks)
-        self.__load_image_dir(image_dir)
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle(f'{__appname__} - Open Image Directory')
+        dialog.setFileMode(QFileDialog.FileMode.Directory)
+        dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
+        dialog.setOption(QFileDialog.Option.DontResolveSymlinks, True)
+        if default_image_dir != '.':
+            dialog.setDirectory(osp.dirname(default_image_dir))
+            dialog.selectFile(default_image_dir)
+        return_code = dialog.exec()
+        if return_code == 1:
+            image_dir = dialog.selectedFiles()[0]
+            self.__load_image_dir(image_dir)
 
     def __open_label_file_dialog(self):
         if self._image_dir is None:
@@ -300,12 +308,17 @@ class MainWindow(QMainWindow):
         default_label_file = '.'
         if self._label_file is not None:
             default_label_file = self._label_file
-        label_file = QFileDialog.getSaveFileName(
-            self, f'{__appname__} - Save label to the file',
-            osp.dirname(default_label_file), 'Text (*.txt)',
-            None, QFileDialog.Option.DontConfirmOverwrite)
-        label_file = label_file[0]
-        if label_file != '':
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle(f'{__appname__} - Save label to the file')
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+        dialog.setNameFilter('Text (*.txt)')
+        dialog.setOption(QFileDialog.Option.DontConfirmOverwrite, True)
+        if default_label_file != '.':
+            dialog.setDirectory(osp.dirname(default_label_file))
+            dialog.selectFile(default_label_file)
+        return_code = dialog.exec()
+        if return_code == 1:
+            label_file = dialog.selectedFiles()[0]
             self.__load_label_file(label_file)
             self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
             self.statusBar().show()
