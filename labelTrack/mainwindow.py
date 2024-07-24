@@ -99,8 +99,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(__appname__)
 
         self._image_dir: Optional[str] = None
+        self._image_dir_prev_opened: Optional[str] = None
         self._image_files: list[str] = []
         self._label_file: Optional[str] = None
+        self._label_file_prev_opened: Optional[str] = None
         self._bboxes: list[BBox] = []
         self._dirty: bool = False
 
@@ -281,8 +283,9 @@ class MainWindow(QMainWindow):
         if not self.__may_continue():
             return
         default_image_dir = '.'
-        if self._image_dir and osp.exists(self._image_dir):
-            default_image_dir = self._image_dir
+        if (self._image_dir_prev_opened is not None) and \
+           (osp.exists(self._image_dir_prev_opened)):
+            default_image_dir = self._image_dir_prev_opened
         dialog = QFileDialog(self)
         dialog.setWindowTitle(f'{__appname__} - Open Image Directory')
         dialog.setFileMode(QFileDialog.FileMode.Directory)
@@ -295,6 +298,7 @@ class MainWindow(QMainWindow):
         if return_code == 1:
             image_dir = dialog.selectedFiles()[0]
             self.__load_image_dir(image_dir)
+            self._image_dir_prev_opened = image_dir
 
     def __open_label_file_dialog(self):
         if self._image_dir is None:
@@ -306,8 +310,8 @@ class MainWindow(QMainWindow):
         if not self.__may_continue():
             return
         default_label_file = '.'
-        if self._label_file is not None:
-            default_label_file = self._label_file
+        if self._label_file_prev_opened is not None:
+            default_label_file = self._label_file_prev_opened
         dialog = QFileDialog(self)
         dialog.setWindowTitle(f'{__appname__} - Save label to the file')
         dialog.setFileMode(QFileDialog.FileMode.AnyFile)
@@ -320,6 +324,7 @@ class MainWindow(QMainWindow):
         if return_code == 1:
             label_file = dialog.selectedFiles()[0]
             self.__load_label_file(label_file)
+            self._label_file_prev_opened = label_file
             self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
             self.statusBar().show()
 
