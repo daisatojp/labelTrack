@@ -34,7 +34,11 @@ class BBox:
         return (self.x is None) or \
                (self.y is None) or \
                (self.w is None) or \
-               (self.h is None)
+               (self.h is None) or \
+               (self.x < 0.0 and
+                self.y < 0.0 and
+                self.w < 0.0 and
+                self.h < 0.0)
 
     def xmin(self) -> float:
         return self.x
