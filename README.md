@@ -8,6 +8,8 @@ In visual tracking dataset, a sequence of images has one object for each image, 
 git clone https://github.com/daisatojp/labelTrack.git
 cd labelTrack
 pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.3
+# Windows PowerShell
+# $Env:PYTHONPATH="."
 python labelTrack.py
 ```
 
