@@ -2,6 +2,7 @@ import copy
 from dataclasses import dataclass
 from functools import partial
 from math import sqrt
+from typing import Self
 import os
 import os.path as osp
 import re
@@ -91,6 +92,16 @@ class BBox:
         if self.empty():
             return '-1.00,-1.00,-1.00,-1.00'
         return f'{self.x:.2f},{self.y:.2f},{self.w:.2f},{self.h:.2f}'
+
+    @classmethod
+    def from_xmin_ymin_xmax_ymax(
+            cls: Self,
+            xmin: float, ymin: float,
+            xmax: float, ymax: float) -> Self:
+        return cls(x=xmin,
+                   y=ymin,
+                   w=xmax - xmin,
+                   h=ymax - ymin)
 
 
 class MainWindow(QMainWindow):
@@ -693,12 +704,15 @@ class Canvas(QWidget):
             if (self.mode == CANVAS_CREATE_MODE) and \
                (self._bbox_sx is not None) and \
                (self._bbox_sy is not None):
-                self.bbox = BBox(
-                    x=min(self._bbox_sx, pos.x()),
-                    y=min(self._bbox_sy, pos.y()),
-                    w=abs(pos.x() - self._bbox_sx),
-                    h=abs(pos.y() - self._bbox_sy))
-                self.p.update_bboxes_from_canvas()
+                x = min(self._bbox_sx, pos.x())
+                y = min(self._bbox_sy, pos.y())
+                w = abs(pos.x() - self._bbox_sx)
+                h = abs(pos.y() - self._bbox_sy)
+                bbox = BBox(x=x, y=y, w=w, h=h)
+                bbox = self.__intersection_pixmap(bbox)
+                if not bbox.empty():
+                    self.bbox = bbox
+                    self.p.update_bboxes_from_canvas()
                 self.p.create_bbox_action.setEnabled(True)
                 self.mode = CANVAS_EDIT_MODE
                 self._highlighted_bbox = False
@@ -844,9 +858,19 @@ class Canvas(QWidget):
     def __in_pixmap_bbox(self, bbox: BBox) -> bool:
         return (self.pixmap is not None) and \
                (0 <= bbox.xmin()) and \
-               (bbox.xmax() < self.pixmap.width()) and \
+               (bbox.xmax() <= self.pixmap.width()) and \
                (0 <= bbox.ymin()) and \
-               (bbox.ymax() < self.pixmap.height())
+               (bbox.ymax() <= self.pixmap.height())
+
+    def __intersection_pixmap(self, bbox: BBox) -> BBox:
+        xmin = max(bbox.xmin(), 0.0)
+        ymin = max(bbox.ymin(), 0.0)
+        xmax = min(bbox.xmax(), self.pixmap.width())
+        ymax = min(bbox.ymax(), self.pixmap.height())
+        if (xmax <= xmin) or (ymax <= ymin):
+            return BBox()
+        return BBox.from_xmin_ymin_xmax_ymax(
+            xmin, ymin, xmax, ymax)
 
     def __move_bbox(self, dx: float, dy: float) -> None:
         if self.bbox.empty():
