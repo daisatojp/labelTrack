@@ -883,20 +883,19 @@ class Canvas(QWidget):
     def __set_point(self, pidx: int, x: float, y: float) -> int:
         if self.bbox.empty():
             return
-        bbox = copy.copy(self.bbox)
-        bbox.set_xy(pidx, x, y)
-        if self.__in_pixmap_bbox(bbox):
-            self.bbox = bbox
-            cx = bbox.cx()
-            cy = bbox.cy()
-            if (x <= cx) and (y <= cy):
-                return 0
-            if (cx < x)  and (y <= cy):
-                return 1
-            if (cx < x)  and (cy < y):
-                return 2
-            if (x <= cx) and (cy < y):
-                return 3
+        x = clip(x, 0.0, self.pixmap.width())
+        y = clip(y, 0.0, self.pixmap.height())
+        self.bbox.set_xy(pidx, x, y)
+        cx = self.bbox.cx()
+        cy = self.bbox.cy()
+        if (x <= cx) and (y <= cy):
+            return 0
+        if (cx < x)  and (y <= cy):
+            return 1
+        if (cx < x)  and (cy < y):
+            return 2
+        if (x <= cx) and (cy < y):
+            return 3
 
     def __nearest_point_idx(self, point: QPointF, eps: float) -> Optional[int]:
         def distance(p):
@@ -905,6 +904,13 @@ class Canvas(QWidget):
             if distance(self.bbox.get_point(i) - point) <= eps:
                 return i
         return None
+
+
+def clip(
+        value: int | float,
+        lower: int | float,
+        upper: int | float):
+    return max(lower, min(value, upper))
 
 
 def natural_sort(list: list[str], key = lambda s:s):
