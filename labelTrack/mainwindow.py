@@ -269,7 +269,7 @@ class MainWindow(QMainWindow):
         self._dirty = dirty
         self.save_action.setEnabled(dirty)
 
-    def __may_continue(self):
+    def __may_continue(self) -> bool:
         if not self._dirty:
             return True
         result = QMB.warning(
@@ -283,7 +283,7 @@ class MainWindow(QMainWindow):
             return True
         return False
 
-    def __open_image_dir_dialog(self):
+    def __open_image_dir_dialog(self) -> None:
         if not self.__may_continue():
             return
         default_image_dir = '.'
@@ -304,7 +304,7 @@ class MainWindow(QMainWindow):
             self.__load_image_dir(image_dir)
             self._image_dir_prev_opened = image_dir
 
-    def __open_label_file_dialog(self):
+    def __open_label_file_dialog(self) -> None:
         if self._image_dir is None:
             QMB.information(
                 self, 'Attention',
@@ -327,12 +327,14 @@ class MainWindow(QMainWindow):
         return_code = dialog.exec()
         if return_code == 1:
             label_file = dialog.selectedFiles()[0]
+            if osp.splitext(label_file)[1] != '.txt':
+                label_file += '.txt'
             self.__load_label_file(label_file)
             self._label_file_prev_opened = label_file
             self.statusBar().showMessage(f'Label will be saved to {self._label_file}.')
             self.statusBar().show()
 
-    def __open_prev_image(self):
+    def __open_prev_image(self) -> None:
         cnt = self.img_list.count()
         idx = self.img_list.currentRow()
         if self.auto_saving_action.isChecked():
@@ -344,7 +346,7 @@ class MainWindow(QMainWindow):
             self.img_list.setCurrentRow(idx)
         self.__load_image()
 
-    def __open_next_image(self):
+    def __open_next_image(self) -> None:
         cnt = self.img_list.count()
         idx = self.img_list.currentRow()
         if self.auto_saving_action.isChecked():
@@ -354,21 +356,27 @@ class MainWindow(QMainWindow):
             self.img_list.setCurrentRow(idx)
         self.__load_image()
 
-    def __next_image_and_copy(self):
+    def __next_image_and_copy(self) -> None:
         self.__open_next_image()
         self.__copy_bbox()
 
-    def __show_info_dialog(self):
+    def __show_info_dialog(self) -> None:
         msg = f'Name:{__appname__} \nApp Version:{__version__}'
         QMB.information(self, 'Information', msg)
 
-    def __create_bbox(self):
+    def __create_bbox(self) -> None:
+        if self._label_file is None:
+            QMB.information(self, 'Information', 'You need to open label file beforehand.')
+            return
         if self.canvas.pixmap is None:
             return
         self.canvas.set_mode(CANVAS_CREATE_MODE)
         self.create_bbox_action.setEnabled(False)
 
-    def __delete_bbox(self):
+    def __delete_bbox(self) -> None:
+        if self._label_file is None:
+            QMB.information(self, 'Information', 'You need to open label file beforehand.')
+            return
         idx = self.img_list.currentRow()
         if idx < 0:
             return
@@ -377,7 +385,7 @@ class MainWindow(QMainWindow):
         self.canvas.update()
         self.__update_img_list()
 
-    def __copy_bbox(self):
+    def __copy_bbox(self) -> None:
         idx = self.img_list.currentRow()
         if idx <= 0:
             return
@@ -461,6 +469,9 @@ class MainWindow(QMainWindow):
         self._bboxes = [BBox() for _ in range(len(self._bboxes))]
         if label_file is None:
             return
+        if not osp.exists(label_file):
+            with open(label_file, 'w') as f:
+                pass
         with open(label_file, 'r') as f:
             for idx, line in enumerate(f.readlines()):
                 s = line.split(',')
