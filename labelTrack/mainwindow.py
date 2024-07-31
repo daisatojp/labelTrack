@@ -357,19 +357,23 @@ class MainWindow(QMainWindow):
             self.img_list.setCurrentRow(idx)
         self.__load_image()
 
-    def __open_next_image(self) -> None:
-        cnt = self.img_list.count()
-        idx = self.img_list.currentRow()
+    def __open_next_image(self) -> bool:
         if self.auto_saving_action.isChecked():
             self.__save_label_file()
+        cnt = self.img_list.count()
+        idx = self.img_list.currentRow()
         if idx + 1 < cnt:
             idx += 1
             self.img_list.setCurrentRow(idx)
+        else:
+            QMB.information(self, 'Information', 'You have reached the end of the sequence.')
+            return False
         self.__load_image()
+        return True
 
     def __next_image_and_copy(self) -> None:
-        self.__open_next_image()
-        self.__copy_bbox()
+        if self.__open_next_image():
+            self.__copy_bbox()
 
     def __show_info_dialog(self) -> None:
         msg = f'Name:{__appname__} \nApp Version:{__version__}'
