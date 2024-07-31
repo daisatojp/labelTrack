@@ -114,10 +114,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(__appname__)
 
         self._image_dir: Optional[str] = None
-        self._image_dir_prev_opened: Optional[str] = None
+        self._image_dir_prev_opened: Optional[str] = settings.get('image_dir', None)
         self._image_files: list[str] = []
         self._label_file: Optional[str] = None
-        self._label_file_prev_opened: Optional[str] = None
+        self._label_file_prev_opened: Optional[str] = settings.get('label_path', None)
         self._bboxes: list[BBox] = []
         self._dirty: bool = False
 
