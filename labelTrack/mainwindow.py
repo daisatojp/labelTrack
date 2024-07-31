@@ -274,7 +274,7 @@ class MainWindow(QMainWindow):
 
     def scroll_request(self, delta: int | float, orientation: Qt.Orientation) -> None:
         bar = self.scroll_bars[orientation]
-        bar.setValue(int(bar.value() + bar.singleStep() * (-delta / 120)))
+        bar.setValue(round(bar.value() + bar.singleStep() * (-delta / 30)))
 
     def __set_dirty(self, dirty: bool) -> None:
         self._dirty = dirty
@@ -631,12 +631,13 @@ class Canvas(QWidget):
             return
 
         pos = self.__transform_pos(event.pos())
+        scale = self.__scale()
         mx = pos.x()
         my = pos.y()
         mx_pre = self._mx
         my_pre = self._my
-        dmx = mx - mx_pre if (mx_pre is not None) else None
-        dmy = my - my_pre if (my_pre is not None) else None
+        dmx = (mx - mx_pre) if (mx_pre is not None) else None
+        dmy = (my - my_pre) if (my_pre is not None) else None
         self._mx = mx
         self._my = my
 
@@ -651,12 +652,12 @@ class Canvas(QWidget):
                     self._highlighted_pidx = self.__set_point(self._highlighted_pidx, mx, my)
                     self.p.update_bboxes_from_canvas()
                 else:
-                    self.p.scroll_request(dmx, Qt.Orientation.Horizontal)
-                    self.p.scroll_request(dmy, Qt.Orientation.Vertical)
+                    self.p.scroll_request(dmx * scale, Qt.Orientation.Horizontal)
+                    self.p.scroll_request(dmy * scale, Qt.Orientation.Vertical)
         else:
             if self.mode == CANVAS_EDIT_MODE:
                 if not self.bbox.empty():
-                    pidx = self.__nearest_point_idx(pos, 20.0 / self.__scale())
+                    pidx = self.__nearest_point_idx(pos, 20.0 / scale)
                     if   pidx is not None:
                         self._highlighted_bbox = False
                         self._highlighted_pidx = pidx
