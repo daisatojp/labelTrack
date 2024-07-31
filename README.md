@@ -41,8 +41,7 @@ More concretely, see [sample/label.txt](https://github.com/daisatojp/labelTrack/
 | `c` | remove bounding box |
 | `r` | copy bounding box from previous image |
 | `t` | open next image and copy bounding box from previous image |
-| `v` | open next image and remove bounding box |
 
 ## Acknowledgment
 
-* [labelimg](https://github.com/tzutalin/labelImg) as a reference.
+* [labelImg](https://github.com/tzutalin/labelImg) as a reference.
