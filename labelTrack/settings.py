@@ -1,6 +1,5 @@
 import json
 import os.path as osp
-import sys
 from typing import Optional
 from labelTrack.defines import SETTINGS_FILE
 
@@ -10,7 +9,8 @@ class Settings(object):
     def __init__(self):
         self._data: Optional[dict] = None
         if not osp.exists(SETTINGS_FILE):
-            sys.exit(1)
+            with open(SETTINGS_FILE, 'w') as f:
+                json.dump({}, f)
         self.load()
 
     def __getitem__(self, key):
