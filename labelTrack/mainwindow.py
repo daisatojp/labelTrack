@@ -307,7 +307,7 @@ class MainWindow(QMainWindow):
         dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)
         dialog.setOption(QFileDialog.Option.DontResolveSymlinks, True)
         if default_image_dir != '.':
-            dialog.setDirectory(osp.dirname(default_image_dir))
+            dialog.setDirectory(default_image_dir)
             dialog.selectFile(default_image_dir)
         return_code = dialog.exec()
         if return_code == 1:
