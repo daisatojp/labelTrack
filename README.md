@@ -4,6 +4,8 @@ In visual tracking dataset, a sequence of images has one object for each image, 
 
 ## Quick Start
 
+Windows user can use an executable file. You can dowload from the [Releases](https://github.com/daisatojp/labelTrack/releases/tag/v1.1.0).
+
 ```bash
 git clone https://github.com/daisatojp/labelTrack.git
 cd labelTrack
@@ -13,9 +15,9 @@ pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.3
 python labelTrack.py
 ```
 
-* Click `Open Label File` in toolbar to select label file to be saved.
-* Click `Open Image Dir` in toolbar to open a folder containing a sequence of images.
-* Click `Create Object` in toolbar and make box by a mouse dragging in each image.
+* Click `Open Image` in toolbar to open a folder containing a sequence of images.
+* Click `Open Label` in toolbar to select label file to be saved.
+* Click `Create BBox` in toolbar and make box by a mouse dragging in each image.
 * Click `Save` in toolbar to save label file.
 
 ## Label Format
