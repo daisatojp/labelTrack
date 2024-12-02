@@ -12,7 +12,7 @@ cd labelTrack
 pip install PyQt6==6.6.1 PyQt6-Qt6==6.6.3
 # Windows PowerShell
 # $Env:PYTHONPATH="."
-python labelTrack.py
+python labelTrack
 ```
 
 * Click `Open Image` in toolbar to open a folder containing a sequence of images.
