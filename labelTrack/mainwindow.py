@@ -622,6 +622,22 @@ class Canvas(QWidget):
             self.__move_bbox(0.0, -1.0)
         elif key == Qt.Key.Key_Down:
             self.__move_bbox(0.0, +1.0)
+        elif key == Qt.Key.Key_1:
+            self.__set_point(0, self.bbox.xmin(), self.bbox.ymin() - 1.0)
+        elif key == Qt.Key.Key_2:
+            self.__set_point(0, self.bbox.xmin(), self.bbox.ymin() + 1.0)
+        elif key == Qt.Key.Key_3:
+            self.__set_point(0, self.bbox.xmin() - 1.0, self.bbox.ymin())
+        elif key == Qt.Key.Key_4:
+            self.__set_point(0, self.bbox.xmin() + 1.0, self.bbox.ymin())
+        elif key == Qt.Key.Key_5:
+            self.__set_point(2, self.bbox.xmax(), self.bbox.ymax() + 1.0)
+        elif key == Qt.Key.Key_6:
+            self.__set_point(2, self.bbox.xmax(), self.bbox.ymax() - 1.0)
+        elif key == Qt.Key.Key_7:
+            self.__set_point(2, self.bbox.xmax() + 1.0, self.bbox.ymax())
+        elif key == Qt.Key.Key_8:
+            self.__set_point(2, self.bbox.xmax() - 1.0, self.bbox.ymax())
         self.update()
 
     def leaveEvent(self, event: QEvent) -> None:
