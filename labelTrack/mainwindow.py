@@ -164,6 +164,19 @@ class MainWindow(QMainWindow):
         self.zoom_out_action = self.__new_action('Zoom Out', icon_file='zoom-out', slot=partial(self.__add_zoom, -10), shortcut='Ctrl+-')
         self.zoom_org_action = self.__new_action('Original Size', icon_file='zoom', slot=self.__reset_zoom, shortcut='Ctrl+=')
         self.fit_window_action = self.__new_action('Fit Window', icon_file='fit-window', slot=self.__set_fit_window, shortcut='Ctrl+F')
+        self.light_brighten_action = self.__new_action('Light Brighten', icon_file='light_lighten', slot=partial(self.__add_light, 10), shortcut='Ctrl+Shift++')
+        self.light_darken_action = self.__new_action('Light Darken', icon_file='light_darken', slot=partial(self.__add_light, -10), shortcut='Ctrl+Shift+-')
+        self.light_org_action = self.__new_action('Light Reset', icon_file='light_reset', slot=partial(self.__set_light, 50), shortcut='Ctrl+Shift+=', checkable=True, checked=True)
+        self.light_spinbox = QSpinBox()
+        self.light_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.light_spinbox.setRange(0, 100)
+        self.light_spinbox.setSuffix(' %')
+        self.light_spinbox.setValue(50)
+        self.light_spinbox.setToolTip('Light Level')
+        self.light_spinbox.setStatusTip(self.toolTip())
+        self.light_spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.light_spinbox.setEnabled(False)
+        self.light_spinbox.valueChanged.connect(self.__light_changed)
         self.menus_file = self.menuBar().addMenu('File')
         self.menus_edit = self.menuBar().addMenu('Edit')
         self.menus_view = self.menuBar().addMenu('View')
@@ -202,6 +215,11 @@ class MainWindow(QMainWindow):
         self.toolbar.addWidget(self.zoom_spinbox)
         self.toolbar.addAction(self.zoom_out_action)
         self.toolbar.addAction(self.fit_window_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.light_brighten_action)
+        self.toolbar.addWidget(self.light_spinbox)
+        self.toolbar.addAction(self.light_darken_action)
+        self.toolbar.addAction(self.light_org_action)
         self.statusBar().showMessage(f'{__appname__} started.')
         self.statusBar().show()
 
@@ -526,6 +544,23 @@ class MainWindow(QMainWindow):
         a2 = w2 / h2
         return w1 / w2 if a1 <= a2 else h1 / h2
 
+    def __set_light(self, value: int) -> None:
+        self.light_org_action.setChecked(int(value) == 50)
+        self.light_spinbox.setValue(int(value))
+
+    def __add_light(self, increment: int = 10) -> None:
+        self.__set_light(self.light_spinbox.value() + increment)
+
+    def __light_changed(self) -> None:
+        color = None
+        value = self.light_spinbox.value()
+        if value != 50:
+            strength = int(value / 100 * 255 + 0.5)
+            color = QColor(strength, strength, strength)
+        self.canvas.set_overlay_color(color)
+        self.canvas.adjustSize()
+        self.canvas.update()
+
     def __zoom_value_changed(self):
         if self.canvas.pixmap is None:
             return
@@ -602,6 +637,7 @@ class Canvas(QWidget):
         self._bbox_sy: Optional[float] = None
         self._highlighted_bbox: bool = False
         self._highlighted_pidx: Optional[int] = None
+        self._overlay_color: Optional[QColor] = None
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.WheelFocus)
@@ -758,7 +794,15 @@ class Canvas(QWidget):
         p.scale(scale, scale)
         p.translate(self.__offset_to_center())
 
-        p.drawPixmap(0, 0, self.pixmap)
+        pixmap_out = self.pixmap
+        if self._overlay_color:
+            pixmap_out = QPixmap(self.pixmap)
+            painter = QPainter(pixmap_out)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Overlay)
+            painter.fillRect(pixmap_out.rect(), self._overlay_color)
+            painter.end()
+
+        p.drawPixmap(0, 0, pixmap_out)
 
         if not self.bbox.empty():
             line_path = QPainterPath()
@@ -837,6 +881,9 @@ class Canvas(QWidget):
         if mode == CANVAS_CREATE_MODE:
             self._highlighted_bbox = False
             self._highlighted_pidx = None
+
+    def set_overlay_color(self, color: Optional[QColor]) -> None:
+        self._overlay_color = color
 
     def __current_cursor(self) -> Optional[QCursor]:
         cursor = QApplication.overrideCursor()
