@@ -41,8 +41,8 @@ More concretely, see [sample/label.txt](https://github.com/daisatojp/labelTrack/
 | `a` | open previous image |
 | `w` | create bounding box |
 | `c` | remove bounding box |
-| `r` | copy bounding box from previous image |
-| `t` | open next image and copy bounding box from previous image |
+| `r` | open next image and copy bounding box from previous image |
+| `t` | copy bounding box from previous image |
 
 ## Acknowledgment
 
